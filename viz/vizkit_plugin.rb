@@ -1,0 +1,2 @@
+Vizkit::UiLoader.register_3d_plugin('PCLPointCloudVisualization', 'vizkit3d_pcl', 'PCLPointCloudVisualization')
+Vizkit::UiLoader.register_3d_plugin_for('PCLPointCloudVisualization', "/pcl/PCLPointCloud2", :updateData )
