@@ -5,7 +5,6 @@
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 #include <osg/Geode>
 #include <pcl/PCLPointCloud2.h>
-#include <orocos/pcl/pclTypes.hpp>
 #include <osg/Geometry>
 
 namespace vizkit3d
