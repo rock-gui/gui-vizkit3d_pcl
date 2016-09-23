@@ -18,7 +18,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), new_points(false)
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), new_points(false), show_color(true), show_intensity(false)
 {
 }
 
@@ -58,7 +58,7 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
         pointsOSG->clear();
         color->clear();
 
-        if(pcl::getFieldIndex(p->data, "rgba") != -1)
+        if(pcl::getFieldIndex(p->data, "rgba") != -1 && (show_color || show_intensity))
         {
             pcl::PointCloud<pcl::PointXYZRGBA> pc;
             pcl::fromPCLPointCloud2(p->data, pc);
@@ -66,10 +66,16 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
             for(size_t i = 0; i < pc.size(); i++)
             {
                 pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, pc[i].a/255.0));
+                if(!show_color)
+                    color->push_back(osg::Vec4f(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), pc[i].a/255.0));
+                else if(!show_intensity)
+                    color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
+                else
+                    color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, pc[i].a/255.0));
+
             }
         }
-        else if(pcl::getFieldIndex(p->data, "rgb") != -1)
+        else if(pcl::getFieldIndex(p->data, "rgb") != -1 && show_color)
         {
             pcl::PointCloud<pcl::PointXYZRGB> pc;
             pcl::fromPCLPointCloud2(p->data, pc);
@@ -144,6 +150,27 @@ void PCLPointCloudVisualization::setPointSize(double size)
     emit propertyChanged("pointSize");
 }
 
+bool PCLPointCloudVisualization::getShowColor()
+{
+    return show_color;
+}
+
+void PCLPointCloudVisualization::setShowColor(bool b)
+{
+    show_color = b;
+    emit propertyChanged("showColor");
+}
+
+bool PCLPointCloudVisualization::getShowIntensity()
+{
+    return show_intensity;
+}
+
+void PCLPointCloudVisualization::setShowIntensity(bool b)
+{
+    show_intensity = b;
+    emit propertyChanged("showIntensity");
+}
 
 //Macro that makes this plugin loadable in ruby, this is optional.
 VizkitQtPlugin(PCLPointCloudVisualization)

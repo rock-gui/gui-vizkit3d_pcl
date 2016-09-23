@@ -16,12 +16,18 @@ namespace vizkit3d
     Q_OBJECT
     Q_PROPERTY(QColor defaultFeatureColor READ getDefaultFeatureColor WRITE setDefaultFeatureColor)
     Q_PROPERTY(double pointSize READ getPointSize WRITE setPointSize)
+    Q_PROPERTY(bool showColor READ getShowColor WRITE setShowColor)
+    Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
 
     public slots:
         QColor getDefaultFeatureColor();
         void setDefaultFeatureColor(QColor color);
         double getPointSize();
         void setPointSize(double size);
+        bool getShowColor();
+        void setShowColor(bool b);
+        bool getShowIntensity();
+        void setShowIntensity(bool b);
 
     public:
         PCLPointCloudVisualization();
@@ -44,6 +50,8 @@ namespace vizkit3d
         osg::ref_ptr<osg::Geometry> pointGeom;
         osg::ref_ptr<osg::Vec4Array> color;
         bool new_points;
+        bool show_color;
+        bool show_intensity;
     };
 }
 #endif
