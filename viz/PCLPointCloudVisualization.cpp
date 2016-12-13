@@ -18,7 +18,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), new_points(false), show_color(true), show_intensity(false)
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false)
 {
 }
 
@@ -51,77 +51,71 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 
 void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 {
-    if(new_points)
+    pointsOSG->clear();
+    color->clear();
+
+    if(pcl::getFieldIndex(p->data, "rgba") != -1 && (show_color || show_intensity))
     {
-        new_points = false;
+        pcl::PointCloud<pcl::PointXYZRGBA> pc;
+        pcl::fromPCLPointCloud2(p->data, pc);
 
-        pointsOSG->clear();
-        color->clear();
-
-        if(pcl::getFieldIndex(p->data, "rgba") != -1 && (show_color || show_intensity))
+        for(size_t i = 0; i < pc.size(); i++)
         {
-            pcl::PointCloud<pcl::PointXYZRGBA> pc;
-            pcl::fromPCLPointCloud2(p->data, pc);
-
-            for(size_t i = 0; i < pc.size(); i++)
-            {
-                pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                if(!show_color)
-                    color->push_back(osg::Vec4f(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), pc[i].a/255.0));
-                else if(!show_intensity)
-                    color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
-                else
-                    color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, pc[i].a/255.0));
-
-            }
-        }
-        else if(pcl::getFieldIndex(p->data, "rgb") != -1 && show_color)
-        {
-            pcl::PointCloud<pcl::PointXYZRGB> pc;
-            pcl::fromPCLPointCloud2(p->data, pc);
-
-            for(size_t i = 0; i < pc.size(); i++)
-            {
-                pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+            pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+            if(!show_color)
+                color->push_back(osg::Vec4f(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), pc[i].a/255.0));
+            else if(!show_intensity)
                 color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
-            }
+            else
+                color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, pc[i].a/255.0));
+
         }
-        else if(pcl::getFieldIndex(p->data, "intensity") != -1 && show_intensity)
-        {
-            pcl::PointCloud<pcl::PointXYZI> pc;
-            pcl::fromPCLPointCloud2(p->data, pc);
-
-            osg::Vec4f feature_color = default_feature_color;
-            for(size_t i = 0; i < pc.size(); i++)
-            {
-                pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                feature_color.w() = pc[i].intensity;
-                color->push_back(feature_color);
-            }
-        }
-        else
-        {
-            pcl::PointCloud<pcl::PointXYZ> pc;
-            pcl::fromPCLPointCloud2(p->data, pc);
-
-            for(size_t i = 0; i < pc.size(); i++)
-            {
-                pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                color->push_back(default_feature_color);
-
-            }
-        }
-
-        drawArrays->setCount(pointsOSG->size());
-        pointGeom->setVertexArray(pointsOSG);
-        pointGeom->setColorArray(color);
     }
+    else if(pcl::getFieldIndex(p->data, "rgb") != -1 && show_color)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB> pc;
+        pcl::fromPCLPointCloud2(p->data, pc);
+
+        for(size_t i = 0; i < pc.size(); i++)
+        {
+            pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+            color->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
+        }
+    }
+    else if(pcl::getFieldIndex(p->data, "intensity") != -1 && show_intensity)
+    {
+        pcl::PointCloud<pcl::PointXYZI> pc;
+        pcl::fromPCLPointCloud2(p->data, pc);
+
+        osg::Vec4f feature_color = default_feature_color;
+        for(size_t i = 0; i < pc.size(); i++)
+        {
+            pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+            feature_color.w() = pc[i].intensity;
+            color->push_back(feature_color);
+        }
+    }
+    else
+    {
+        pcl::PointCloud<pcl::PointXYZ> pc;
+        pcl::fromPCLPointCloud2(p->data, pc);
+
+        for(size_t i = 0; i < pc.size(); i++)
+        {
+            pointsOSG->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+            color->push_back(default_feature_color);
+
+        }
+    }
+
+    drawArrays->setCount(pointsOSG->size());
+    pointGeom->setVertexArray(pointsOSG);
+    pointGeom->setColorArray(color);
 }
 
 void PCLPointCloudVisualization::updateDataIntern(pcl::PCLPointCloud2 const& value)
 {
     p->data = value;
-    new_points = true;
 }
 
 QColor PCLPointCloudVisualization::getDefaultFeatureColor()
@@ -133,6 +127,7 @@ QColor PCLPointCloudVisualization::getDefaultFeatureColor()
 
 void PCLPointCloudVisualization::setDefaultFeatureColor(QColor color)
 {
+    setDirty();
     default_feature_color.x() = color.redF();
     default_feature_color.y() = color.greenF();
     default_feature_color.z() = color.blueF();
@@ -170,6 +165,8 @@ bool PCLPointCloudVisualization::getShowColor()
 
 void PCLPointCloudVisualization::setShowColor(bool b)
 {
+    if(show_color != b)
+        setDirty();
     show_color = b;
     emit propertyChanged("showColor");
 }
@@ -181,6 +178,8 @@ bool PCLPointCloudVisualization::getShowIntensity()
 
 void PCLPointCloudVisualization::setShowIntensity(bool b)
 {
+    if(show_intensity != b)
+        setDirty();
     show_intensity = b;
     emit propertyChanged("showIntensity");
 }
