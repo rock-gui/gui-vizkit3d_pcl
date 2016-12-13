@@ -40,7 +40,7 @@ namespace vizkit3d
         virtual osg::ref_ptr<osg::Node> createMainNode();
         virtual void updateMainNode(osg::Node* node);
         virtual void updateDataIntern(pcl::PCLPointCloud2 const& plan);
-        
+
     private:
         struct Data;
         Data* p;
@@ -49,7 +49,6 @@ namespace vizkit3d
         osg::ref_ptr<osg::DrawArrays> drawArrays;
         osg::ref_ptr<osg::Geometry> pointGeom;
         osg::ref_ptr<osg::Vec4Array> color;
-        bool new_points;
         bool show_color;
         bool show_intensity;
     };
