@@ -133,6 +133,3 @@ void PCLPointCloudVisualization::setShowIntensity(bool b)
     show_intensity = b;
     emit propertyChanged("showIntensity");
 }
-
-//Macro that makes this plugin loadable in ruby, this is optional.
-VizkitQtPlugin(PCLPointCloudVisualization)
