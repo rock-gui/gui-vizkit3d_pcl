@@ -5,6 +5,7 @@
 #include <pcl/point_types.h>
 #include <pcl/common/io.h>
 #include <osg/Point>
+#include <vizkit3d/ColorConversionHelper.hpp>
 
 using namespace vizkit3d;
 
@@ -15,7 +16,7 @@ struct PolygonMeshVisualization::Data {
     pcl::PolygonMesh data;
 };
 
-PolygonMeshVisualization::PolygonMeshVisualization() : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false)
+PolygonMeshVisualization::PolygonMeshVisualization() : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), colorize_height(false), colorize_interval(1.0)
 {
 
 }
@@ -52,6 +53,16 @@ void PolygonMeshVisualization::updateMainNode(osg::Node* node)
 
     // dispatch PCLPointCloud2 to osg format
     PointCloudDispatcher::dispatch(p->data.cloud, pointsOSG, color, default_feature_color, show_color, show_intensity);
+
+    if(colorize_height)
+    {
+        for(size_t i = 0; i < pointsOSG->size(); i++)
+        {
+            double hue = (pointsOSG->at(i).z() - std::floor(pointsOSG->at(i).z() / colorize_interval) * colorize_interval) / colorize_interval;
+            osg::Vec4& c = color->at(i);
+            hslToRgb(hue, 1.0, 0.5, c.r(), c.g(), c.b());
+        }
+    }
 
     pointGeom->setVertexArray(pointsOSG);
     pointGeom->setColorArray(color);
@@ -116,4 +127,29 @@ void PolygonMeshVisualization::setShowIntensity(bool b)
         setDirty();
     show_intensity = b;
     emit propertyChanged("showIntensity");
+}
+
+bool PolygonMeshVisualization::isColorizeHeightEnabled() const
+{
+    return colorize_height;
+}
+
+void PolygonMeshVisualization::setColorizeHeight(bool value)
+{
+    colorize_height = value;
+    emit propertyChanged("colorizeHeight");
+}
+
+double PolygonMeshVisualization::getColorizeInterval() const
+{
+    return colorize_interval;
+}
+
+void PolygonMeshVisualization::setColorizeInterval(double value)
+{
+    if(value != 0.0)
+    {
+        colorize_interval = value;
+        emit propertyChanged("colorizeInterval");
+    }
 }
