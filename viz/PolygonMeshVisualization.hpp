@@ -17,6 +17,8 @@ namespace vizkit3d
     Q_PROPERTY(QColor defaultFeatureColor READ getDefaultFeatureColor WRITE setDefaultFeatureColor)
     Q_PROPERTY(bool showColor READ getShowColor WRITE setShowColor)
     Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
+    Q_PROPERTY(bool colorizeHeight READ isColorizeHeightEnabled WRITE setColorizeHeight)
+    Q_PROPERTY(double colorizeInterval READ getColorizeInterval WRITE setColorizeInterval)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -25,6 +27,10 @@ namespace vizkit3d
         void setShowColor(bool b);
         bool getShowIntensity();
         void setShowIntensity(bool b);
+        void setColorizeHeight(bool value);
+        bool isColorizeHeightEnabled()const;
+        void setColorizeInterval(double value);
+        double getColorizeInterval()const;
 
     public:
         PolygonMeshVisualization();
@@ -48,6 +54,8 @@ namespace vizkit3d
         osg::ref_ptr<osg::Vec4Array> color;
         bool show_color;
         bool show_intensity;
+        bool colorize_height;
+        double colorize_interval;
     };
 }
 #endif
