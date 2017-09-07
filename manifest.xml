@@ -1,6 +1,6 @@
 <package>
   <description brief="PCL (Point CLoud Library) visualization plugins">
-  
+
   </description>
   <author>Sascha Arnold/sascha.arnold@dfki.de</author>
   <license></license>
@@ -10,7 +10,6 @@
   <depend package="base/types" />
   <depend package="gui/vizkit3d" />
   <depend package="slam/pcl" />
-  <depend package="slam/orogen/pcl" />
 
   <tags>needs_opt</tags>
 </package>
