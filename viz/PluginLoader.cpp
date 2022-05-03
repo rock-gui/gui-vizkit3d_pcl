@@ -32,5 +32,5 @@ namespace vizkit3d {
             return plugin;
         };
     };
-    Q_EXPORT_PLUGIN2(QtPluginVizkit, QtPluginVizkit)
+    Q_PLUGIN_METADATA(IID "QtPluginVizkit")
 }
