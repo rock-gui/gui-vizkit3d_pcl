@@ -16,7 +16,9 @@ rock_vizkit_plugin(vizkit3d_pcl-viz
     MOC
         PCLPointCloudVisualization.cpp
         PolygonMeshVisualization.cpp
+        PluginLoader.cpp
     HEADERS
         PCLPointCloudVisualization.hpp
         PolygonMeshVisualization.hpp
-        PointCloudDispatcher.hpp)
+        PointCloudDispatcher.hpp
+        PluginLoader.hpp)
