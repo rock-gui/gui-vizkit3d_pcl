@@ -5,7 +5,7 @@ namespace vizkit3d {
         * Returns a list of all available visualization plugins.
         * @return list of plugin names
         */
-        QStringList* QtPluginVizkit::getAvailablePlugins() const
+        QStringList* QtPluginVizkitPCL::getAvailablePlugins() const
         {
             QStringList *pluginNames = new QStringList();
             pluginNames->push_back("PCLPointCloudVisualization");
@@ -13,7 +13,7 @@ namespace vizkit3d {
             return pluginNames;
         }
 
-        QObject* QtPluginVizkit::createPlugin(QString const& pluginName)
+        QObject* QtPluginVizkitPCL::createPlugin(QString const& pluginName)
         {
             vizkit3d::VizPluginBase* plugin = 0;
             if (pluginName == "PCLPointCloudVisualization")
