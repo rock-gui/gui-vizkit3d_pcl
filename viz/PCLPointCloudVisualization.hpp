@@ -18,6 +18,7 @@ namespace vizkit3d
     Q_PROPERTY(double pointSize READ getPointSize WRITE setPointSize)
     Q_PROPERTY(bool showColor READ getShowColor WRITE setShowColor)
     Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
+    Q_PROPERTY(bool updateFrameOnlyOnNewData READ getUpdateFramePositionOnlyOnNewData WRITE setUpdateFramePositionOnlyOnNewData)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -36,6 +37,15 @@ namespace vizkit3d
         Q_INVOKABLE void updateData(pcl::PCLPointCloud2 const &sample)
         {vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>::updateData(sample);}
 
+        bool getUpdateFramePositionOnlyOnNewData() {
+            return updateDataFramePosition;
+        }
+
+        void setUpdateFramePositionOnlyOnNewData(const bool &newvalue) {
+            updateDataFramePosition = newvalue;
+            setManualVizPoseUpdateEnabled(updateDataFramePosition);
+        }
+
     protected:
         virtual osg::ref_ptr<osg::Node> createMainNode();
         virtual void updateMainNode(osg::Node* node);
@@ -51,6 +61,7 @@ namespace vizkit3d
         osg::ref_ptr<osg::Vec4Array> color;
         bool show_color;
         bool show_intensity;
+        bool updateDataFramePosition;
     };
 }
 #endif
