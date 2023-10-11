@@ -3,4 +3,5 @@
 cmake_minimum_required(VERSION 2.6)
 find_package(Rock)
 rock_init(vizkit3d_pcl 0.1)
+rock_feature(NOCURDIR)
 rock_standard_layout()
