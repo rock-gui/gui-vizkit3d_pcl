@@ -19,7 +19,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false)
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false)
 {
 }
 
@@ -65,6 +65,10 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 
 void PCLPointCloudVisualization::updateDataIntern(pcl::PCLPointCloud2 const& value)
 {
+    if (updateDataFramePosition)
+    {
+        updateManualVizPose();
+    }
     p->data = value;
 }
 
