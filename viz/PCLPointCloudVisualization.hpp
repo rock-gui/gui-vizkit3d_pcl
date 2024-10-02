@@ -17,6 +17,7 @@ namespace vizkit3d
     Q_PROPERTY(QColor defaultFeatureColor READ getDefaultFeatureColor WRITE setDefaultFeatureColor)
     Q_PROPERTY(double pointSize READ getPointSize WRITE setPointSize)
     Q_PROPERTY(bool showColor READ getShowColor WRITE setShowColor)
+    Q_PROPERTY(bool useHeightColoring READ getUseHeightColoring WRITE setUseHeightColoring)
     Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
     Q_PROPERTY(bool updateFrameOnlyOnNewData READ getUpdateFramePositionOnlyOnNewData WRITE setUpdateFramePositionOnlyOnNewData)
 
@@ -29,6 +30,9 @@ namespace vizkit3d
         void setShowColor(bool b);
         bool getShowIntensity();
         void setShowIntensity(bool b);
+        bool getUseHeightColoring();
+        void setUseHeightColoring(bool b);
+
 
     public:
         PCLPointCloudVisualization();
@@ -62,6 +66,7 @@ namespace vizkit3d
         bool show_color;
         bool show_intensity;
         bool updateDataFramePosition;
+        bool useHeightColoring;
     };
 }
 #endif
