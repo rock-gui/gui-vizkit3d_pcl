@@ -1,25 +1,24 @@
-#pragma once
-
-#include <vizkit3d/Vizkit3DPlugin.hpp>
+#include "vizkit3d/Vizkit3DPlugin.hpp"
+#include "PCLPointCloudVisualization.hpp"
+#include "PolygonMeshVisualization.hpp"
 
 namespace vizkit3d {
+    class QtPluginVizkitPCL : public vizkit3d::VizkitPluginFactory {
+        Q_OBJECT
+	    Q_PLUGIN_METADATA(IID "rock.vizkit3d_pcl.VizkitPluginFactory")
+    private:
+    public:
 
-class QtPluginVizkitBase : public vizkit3d::VizkitPluginFactory {
-	Q_OBJECT
-#if QT_VERSION >= 0x050000
-	Q_PLUGIN_METADATA(IID "rock.vizkit3d_pcl.VizkitPluginFactory")
-#endif
+        QtPluginVizkitPCL(){};
 
- private:
- public:
-	QtPluginVizkitBase() {}
+        /**
+        * Returns a list of all available visualization plugins.
+        * @return list of plugin names
+        */
+        virtual QStringList* getAvailablePlugins() const;
 
-	/**
-	* Returns a list of all available visualization plugins.
-	* @return list of plugin names
-	*/
-	virtual QStringList* getAvailablePlugins() const;
-	virtual QObject* createPlugin(QString const& pluginName);
-};
-
-}  // namespace vizkit3d
+        virtual QObject* createPlugin(QString const& pluginName);
+    };
+    
+    
+}

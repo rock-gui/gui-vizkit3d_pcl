@@ -19,7 +19,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false)
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), useHeightColoring(false), updateDataFramePosition(false)
 {
 }
 
@@ -56,7 +56,7 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     color->clear();
 
     // dispatch PCLPointCloud2 to osg format
-    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity);
+    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity, useHeightColoring);
 
     drawArrays->setCount(pointsOSG->size());
     pointGeom->setVertexArray(pointsOSG);
@@ -65,6 +65,10 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 
 void PCLPointCloudVisualization::updateDataIntern(pcl::PCLPointCloud2 const& value)
 {
+    if (updateDataFramePosition)
+    {
+        updateManualVizPose();
+    }
     p->data = value;
 }
 
@@ -132,4 +136,17 @@ void PCLPointCloudVisualization::setShowIntensity(bool b)
         setDirty();
     show_intensity = b;
     emit propertyChanged("showIntensity");
+}
+
+bool PCLPointCloudVisualization::getUseHeightColoring()
+{
+    return useHeightColoring;
+}
+
+void PCLPointCloudVisualization::setUseHeightColoring(bool b)
+{
+    if(useHeightColoring != b)
+        setDirty();
+    useHeightColoring = b;
+    emit propertyChanged("useHeightColoring");
 }
