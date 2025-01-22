@@ -1,4 +1,6 @@
 #include "PluginLoader.hpp"
+#include "PCLPointCloudVisualization.hpp"
+#include "PolygonMeshVisualization.hpp"
 
 namespace vizkit3d {
         /**
