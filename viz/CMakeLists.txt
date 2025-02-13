@@ -6,6 +6,9 @@ endif()
 rock_find_pkgconfig(Eigen3 eigen3 REQUIRED)
 add_definitions(-DEIGEN_USE_NEW_STDVECTOR)
 find_package(PCL 1.7 REQUIRED COMPONENTS common)
+IF("${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR}" VERSION_LESS 1.14)
+    SET(PCL_VERSION_SUFFIX "-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR}")
+ENDIF()
 
 # rock_vizkit_plugin(vizkit3d_pcl-viz
 #         PluginLoader.cpp
@@ -40,7 +43,7 @@ if (ROCK_QT_VERSION_4)
         ${SOURCES}
         HEADERS ${HEADERS}
         MOC ${MOC}
-        DEPS_PKGCONFIG eigen3 pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR}
+        DEPS_PKGCONFIG eigen3 pcl_common${PCL_VERSION_SUFFIX}
 )
 endif()
 
@@ -49,6 +52,6 @@ if (ROCK_QT_VERSION_5)
         ${SOURCES}
         HEADERS ${HEADERS}
         MOC5 ${MOC}
-        DEPS_PKGCONFIG eigen3 pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR}
+        DEPS_PKGCONFIG eigen3 pcl_common${PCL_VERSION_SUFFIX}
 )
 endif()
