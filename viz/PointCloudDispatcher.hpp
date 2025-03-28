@@ -78,7 +78,7 @@ namespace vizkit3d
                     float hue = (pc[i].z - std::floor(pc[i].z / cycle_color_interval) * cycle_color_interval) / cycle_color_interval;
                     float sat = 1; 
                     float lum = 0.5;
-                    float alpha = 1; 
+                    float alpha = default_feature_color[3]; //use opacity of set color
                     osg::Vec4f heightcolor;
                     vizkit3d::hslToRgb(hue, sat, lum , heightcolor.x(), heightcolor.y(), heightcolor.z());
                     heightcolor.w() = alpha;
