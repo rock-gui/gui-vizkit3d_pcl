@@ -20,6 +20,7 @@ namespace vizkit3d
     Q_PROPERTY(bool useHeightColoring READ getUseHeightColoring WRITE setUseHeightColoring)
     Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
     Q_PROPERTY(bool updateFrameOnlyOnNewData READ getUpdateFramePositionOnlyOnNewData WRITE setUpdateFramePositionOnlyOnNewData)
+    Q_PROPERTY(double maxZ READ getMaxZ WRITE setMaxZ)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -32,6 +33,8 @@ namespace vizkit3d
         void setShowIntensity(bool b);
         bool getUseHeightColoring();
         void setUseHeightColoring(bool b);
+        double getMaxZ();
+        void setMaxZ(double value);
 
 
     public:
@@ -67,6 +70,7 @@ namespace vizkit3d
         bool show_intensity;
         bool updateDataFramePosition;
         bool useHeightColoring;
+        double maxZ;
     };
 }
 #endif

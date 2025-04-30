@@ -19,7 +19,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false)
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false), maxZ(std::numeric_limits<double>::max())
 {
 }
 
@@ -56,7 +56,7 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     color->clear();
 
     // dispatch PCLPointCloud2 to osg format
-    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity, useHeightColoring);
+    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ);
 
     drawArrays->setCount(pointsOSG->size());
     pointGeom->setVertexArray(pointsOSG);
@@ -149,4 +149,16 @@ void PCLPointCloudVisualization::setUseHeightColoring(bool b)
         setDirty();
     useHeightColoring = b;
     emit propertyChanged("useHeightColoring");
+}
+
+double PCLPointCloudVisualization::getMaxZ()
+{
+    return maxZ;
+}
+
+void PCLPointCloudVisualization::setMaxZ(double value)
+{
+    maxZ=value;
+    setDirty();
+    emit propertyChanged("maxZ");
 }
