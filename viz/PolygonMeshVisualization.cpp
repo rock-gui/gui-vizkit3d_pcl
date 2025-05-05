@@ -52,7 +52,7 @@ void PolygonMeshVisualization::updateMainNode(osg::Node* node)
     pointGeom->removePrimitiveSet(0, pointGeom->getNumPrimitiveSets());
 
     // dispatch PCLPointCloud2 to osg format
-    PointCloudDispatcher::dispatch(p->data.cloud, pointsOSG, color, default_feature_color, show_color, show_intensity, false, std::numeric_limits<double>::max());
+    PointCloudDispatcher::dispatch(p->data.cloud, pointsOSG, color, default_feature_color, show_color, show_intensity, false, std::numeric_limits<double>::max(), 1.0);
 
     if(colorize_height)
     {

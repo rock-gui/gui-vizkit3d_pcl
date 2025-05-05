@@ -15,9 +15,15 @@ namespace vizkit3d
     class PointCloudDispatcher
     {
     public:
+
+        static bool randomDownsample(const double &z, const float& ratio) {
+            double random = rand()/(double)RAND_MAX;
+            return random < ratio;
+        }
+
         static void dispatch(const pcl::PCLPointCloud2& pcl_cloud, osg::ref_ptr<osg::Vec3Array> osg_points,
                              osg::ref_ptr<osg::Vec4Array> osg_colors, const osg::Vec4f& default_feature_color,
-                             bool show_color, bool show_intensity, bool useHeightColoring, double maxz)
+                             bool show_color, bool show_intensity, bool useHeightColoring, double maxz, double downsampleRatio)
         {
             if(pcl::getFieldIndex(pcl_cloud, "rgba") != -1 && (show_color || show_intensity))
             {
@@ -26,14 +32,17 @@ namespace vizkit3d
 
                 for(size_t i = 0; i < pc.size(); i++)
                 {
-                    osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                    if(!show_color)
-                        osg_colors->push_back(osg::Vec4f(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), pc[i].a/255.0));
-                    else if(!show_intensity)
-                        osg_colors->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
-                    else
-                        osg_colors->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, pc[i].a/255.0));
-
+                    if (pc[i].z < maxz) {
+                        if (randomDownsample(pc[i].z, downsampleRatio)) {
+                            osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+                            if(!show_color)
+                                osg_colors->push_back(osg::Vec4f(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), pc[i].a/255.0));
+                            else if(!show_intensity)
+                                osg_colors->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
+                            else
+                                osg_colors->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, pc[i].a/255.0));
+                        }
+                    }
                 }
             }
             else if(show_color && pcl::getFieldIndex(pcl_cloud, "rgb") != -1)
@@ -43,8 +52,12 @@ namespace vizkit3d
 
                 for(size_t i = 0; i < pc.size(); i++)
                 {
-                    osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                    osg_colors->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
+                    if (pc[i].z < maxz) {
+                        if (randomDownsample(pc[i].z, downsampleRatio)) {
+                            osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+                            osg_colors->push_back(osg::Vec4f(pc[i].r/255.0, pc[i].g/255.0, pc[i].b/255.0, 1.0));
+                        }
+                    }
                 }
             }
             else if(show_intensity && pcl::getFieldIndex(pcl_cloud, "intensity") != -1)
@@ -55,9 +68,13 @@ namespace vizkit3d
                 osg::Vec4f feature_color = default_feature_color;
                 for(size_t i = 0; i < pc.size(); i++)
                 {
-                    osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                    feature_color.w() = pc[i].intensity;
-                    osg_colors->push_back(feature_color);
+                    if (pc[i].z < maxz) {
+                        if (randomDownsample(pc[i].z, downsampleRatio)) {
+                            osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+                            feature_color.w() = pc[i].intensity;
+                            osg_colors->push_back(feature_color);
+                        }
+                    }
                 }
             }
             else if (useHeightColoring) {
@@ -77,20 +94,21 @@ namespace vizkit3d
                 {
                     // if (i == 0) printf("%s:%i\n", __PRETTY_FUNCTION__, __LINE__);
                     if (pc[i].z < maxz) {
-                        osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+                        if (randomDownsample(pc[i].z, downsampleRatio)) {
+                            osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+                            //cal height based on
+                            
+                            float hue = (pc[i].z - std::floor(pc[i].z / cycle_color_interval) * cycle_color_interval) / cycle_color_interval;
+                            float sat = 1; 
+                            float lum = 0.5;
+                            float alpha = default_feature_color[3]; //use opacity of set color
+                            osg::Vec4f heightcolor;
+                            vizkit3d::hslToRgb(hue, sat, lum , heightcolor.x(), heightcolor.y(), heightcolor.z());
+                            heightcolor.w() = alpha;
 
-                        //cal height based on
-                        
-                        float hue = (pc[i].z - std::floor(pc[i].z / cycle_color_interval) * cycle_color_interval) / cycle_color_interval;
-                        float sat = 1; 
-                        float lum = 0.5;
-                        float alpha = default_feature_color[3]; //use opacity of set color
-                        osg::Vec4f heightcolor;
-                        vizkit3d::hslToRgb(hue, sat, lum , heightcolor.x(), heightcolor.y(), heightcolor.z());
-                        heightcolor.w() = alpha;
-
-                        // if (i == 0) printf("%s:%i %.2f\n", __PRETTY_FUNCTION__, __LINE__);
-                        osg_colors->push_back(heightcolor);
+                            // if (i == 0) printf("%s:%i %.2f\n", __PRETTY_FUNCTION__, __LINE__);
+                            osg_colors->push_back(heightcolor);
+                        }
                     }
                 }
             }

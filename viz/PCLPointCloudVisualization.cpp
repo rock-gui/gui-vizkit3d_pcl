@@ -19,7 +19,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false), maxZ(std::numeric_limits<double>::max())
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false), maxZ(std::numeric_limits<double>::max()), downsampleRatio(1)
 {
 }
 
@@ -56,7 +56,7 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     color->clear();
 
     // dispatch PCLPointCloud2 to osg format
-    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ);
+    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
 
     drawArrays->setCount(pointsOSG->size());
     pointGeom->setVertexArray(pointsOSG);
@@ -161,4 +161,17 @@ void PCLPointCloudVisualization::setMaxZ(double value)
     maxZ=value;
     setDirty();
     emit propertyChanged("maxZ");
+}
+
+double PCLPointCloudVisualization::getDownsampleRatio()
+{
+    return downsampleRatio;
+}
+
+void PCLPointCloudVisualization::setDownsampleRatio(double value)
+{
+    printf("%s:%i %f\n", __PRETTY_FUNCTION__, __LINE__, value);
+    downsampleRatio=value;
+    setDirty();
+    emit propertyChanged("downsampleRatio");
 }
