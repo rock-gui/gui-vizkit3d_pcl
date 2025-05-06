@@ -170,7 +170,6 @@ double PCLPointCloudVisualization::getDownsampleRatio()
 
 void PCLPointCloudVisualization::setDownsampleRatio(double value)
 {
-    printf("%s:%i %f\n", __PRETTY_FUNCTION__, __LINE__, value);
     downsampleRatio=value;
     setDirty();
     emit propertyChanged("downsampleRatio");
