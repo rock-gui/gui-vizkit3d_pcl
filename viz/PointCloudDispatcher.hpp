@@ -119,9 +119,12 @@ namespace vizkit3d
 
                 for(size_t i = 0; i < pc.size(); i++)
                 {
-                    osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
-                    osg_colors->push_back(default_feature_color);
-
+                    if (pc[i].z < maxz) {
+                        if (randomDownsample(pc[i].z, downsampleRatio)) {
+                            osg_points->push_back(osg::Vec3f(pc[i].x, pc[i].y, pc[i].z));
+                            osg_colors->push_back(default_feature_color);
+                        }
+                    }
                 }
             }
         }
