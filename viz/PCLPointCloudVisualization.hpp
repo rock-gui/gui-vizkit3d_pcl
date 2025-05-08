@@ -13,6 +13,16 @@ namespace vizkit3d
         : public vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>
         , boost::noncopyable
     {
+
+        struct LodLevel {
+            float downsample;
+            osg::ref_ptr<osg::Vec3Array> pointsOSG;
+            osg::ref_ptr<osg::DrawArrays> drawArrays;
+            osg::ref_ptr<osg::Geometry> pointGeom;
+            osg::ref_ptr<osg::Vec4Array> color;
+            osg::ref_ptr<osg::Geode> geode;
+        };
+
     Q_OBJECT
     Q_PROPERTY(QColor defaultFeatureColor READ getDefaultFeatureColor WRITE setDefaultFeatureColor)
     Q_PROPERTY(double pointSize READ getPointSize WRITE setPointSize)
@@ -22,6 +32,7 @@ namespace vizkit3d
     Q_PROPERTY(bool updateFrameOnlyOnNewData READ getUpdateFramePositionOnlyOnNewData WRITE setUpdateFramePositionOnlyOnNewData)
     Q_PROPERTY(double maxZ READ getMaxZ WRITE setMaxZ)
     Q_PROPERTY(double downsampleRatio READ getDownsampleRatio WRITE setDownsampleRatio)
+    Q_PROPERTY(bool autoLod READ getAutoLod WRITE setAutoLod)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -38,6 +49,8 @@ namespace vizkit3d
         void setMaxZ(double value);
         double getDownsampleRatio();
         void setDownsampleRatio(double value);
+        bool getAutoLod();
+        void setAutoLod(bool b);
 
     public:
         PCLPointCloudVisualization();
@@ -55,6 +68,8 @@ namespace vizkit3d
             setManualVizPoseUpdateEnabled(updateDataFramePosition);
         }
 
+        void addLodLevel(const float& from, const float& to, const float& downsample);
+
     protected:
         virtual osg::ref_ptr<osg::Node> createMainNode();
         virtual void updateMainNode(osg::Node* node);
@@ -64,16 +79,16 @@ namespace vizkit3d
         struct Data;
         Data* p;
         osg::Vec4f default_feature_color;
-        osg::ref_ptr<osg::Vec3Array> pointsOSG;
-        osg::ref_ptr<osg::DrawArrays> drawArrays;
-        osg::ref_ptr<osg::Geometry> pointGeom;
-        osg::ref_ptr<osg::Vec4Array> color;
+        osg::ref_ptr<osg::LOD> lodnode;
+        std::vector<LodLevel> lodlevels; 
+
         bool show_color;
         bool show_intensity;
         bool updateDataFramePosition;
         bool useHeightColoring;
         double maxZ;
         double downsampleRatio;
+        bool autoLod;
     };
 }
 #endif

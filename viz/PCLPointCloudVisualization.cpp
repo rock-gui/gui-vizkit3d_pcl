@@ -1,10 +1,13 @@
 #include <iostream>
+#include <limits>
 #include "PCLPointCloudVisualization.hpp"
 #include "PointCloudDispatcher.hpp"
 #include <pcl/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/common/io.h>
 #include <osg/Point>
+#include <osg/LOD>
+#include <osgUtil/Simplifier>
 
 using namespace vizkit3d;
 
@@ -19,7 +22,7 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false), maxZ(std::numeric_limits<double>::max()), downsampleRatio(1)
+    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false), maxZ(std::numeric_limits<double>::max()), downsampleRatio(1), autoLod(false)
 {
 }
 
@@ -28,39 +31,81 @@ PCLPointCloudVisualization::~PCLPointCloudVisualization()
     delete p;
 }
 
+
+void PCLPointCloudVisualization::addLodLevel(const float& from, const float& to, const float& downsample) {
+    LodLevel level;
+    level.downsample = downsample;
+    level.pointGeom = new osg::Geometry;
+    level.pointsOSG = new osg::Vec3Array;
+    level.pointGeom->setVertexArray(level.pointsOSG);
+    level.color = new osg::Vec4Array;
+    level.pointGeom->setColorArray(level.color);
+    level.pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+    level.pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    level.drawArrays = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, level.pointsOSG->size() );
+    level.pointGeom->addPrimitiveSet(level.drawArrays.get());
+    level.geode = new osg::Geode;
+    level.geode->addDrawable(level.pointGeom.get());
+    
+    lodlevels.push_back(level);
+
+    lodnode->addChild(level.geode, from, to);
+}
+
 osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 {
     osg::ref_ptr<osg::Group> mainNode = new osg::Group();
 
-    // set up point cloud
-    pointGeom = new osg::Geometry;
-    pointsOSG = new osg::Vec3Array;
-    pointGeom->setVertexArray(pointsOSG);
-    color = new osg::Vec4Array;
-    pointGeom->setColorArray(color);
-    pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-    pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    drawArrays = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, pointsOSG->size() );
-    pointGeom->addPrimitiveSet(drawArrays.get());
+    lodnode = new osg::LOD();
 
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    geode->addDrawable(pointGeom.get());
-    mainNode->addChild(geode);
+    float maxviz = FLT_MAX;
+    if (autoLod){
+        // lower max visibility of the full cloud (set below)
+        maxviz = 50;
+        addLodLevel(50,100,0.5);
+        addLodLevel(100,130,0.1);
+        addLodLevel(130,FLT_MAX,0.01);
+    }
+
+    // add the default layer (not downsampled)
+    addLodLevel(0, maxviz, 1);
+
+    mainNode->addChild(lodnode);
+
     setPointSize(DEFAULT_POINT_SIZE);
     return mainNode;
 }
 
 void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 {
-    pointsOSG->clear();
-    color->clear();
 
-    // dispatch PCLPointCloud2 to osg format
-    PointCloudDispatcher::dispatch(p->data, pointsOSG, color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
+    lodlevels.clear();
+    lodnode->removeChildren(0, lodnode->getNumChildren());
 
-    drawArrays->setCount(pointsOSG->size());
-    pointGeom->setVertexArray(pointsOSG);
-    pointGeom->setColorArray(color);
+    float maxviz = FLT_MAX;
+    if (autoLod){
+        // lower max visibility of the full cloud (set below)
+        maxviz = 50;
+        addLodLevel(50,100,0.5);
+        addLodLevel(100,130,0.1);
+        addLodLevel(130,FLT_MAX,0.01);
+    }
+
+    // add the default layer (not downsampled)
+    addLodLevel(0, maxviz, 1);
+
+
+    for (const auto& lodlevel : lodlevels) {
+
+        lodlevel.pointsOSG->clear();
+        lodlevel.color->clear();
+        // dispatch PCLPointCloud2 to osg format
+        PointCloudDispatcher::dispatch(p->data, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio * lodlevel.downsample);
+        lodlevel.drawArrays->setCount(lodlevel.pointsOSG->size());
+        lodlevel.pointGeom->setVertexArray(lodlevel.pointsOSG);
+        lodlevel.pointGeom->setColorArray(lodlevel.color);
+    }
+
 }
 
 void PCLPointCloudVisualization::updateDataIntern(pcl::PCLPointCloud2 const& value)
@@ -91,9 +136,9 @@ void PCLPointCloudVisualization::setDefaultFeatureColor(QColor color)
 
 double PCLPointCloudVisualization::getPointSize()
 {
-    if(pointGeom.valid())
+    if(lodlevels.size() && lodlevels.front().pointGeom.valid())
     {
-        osg::Point *pt = dynamic_cast<osg::Point*>(pointGeom->getOrCreateStateSet()->getAttribute(osg::StateAttribute::POINT));
+        osg::Point *pt = dynamic_cast<osg::Point*>(lodlevels.front().pointGeom->getOrCreateStateSet()->getAttribute(osg::StateAttribute::POINT));
         if(pt)
             return pt->getSize();
     }
@@ -102,12 +147,13 @@ double PCLPointCloudVisualization::getPointSize()
 
 void PCLPointCloudVisualization::setPointSize(double size)
 {
-    if(pointGeom.valid())
-    {
-        if(size <= 0.0)
-            size = 0.01;
-        osg::ref_ptr<osg::Point> pt = new osg::Point(size);
-        pointGeom->getOrCreateStateSet()->setAttribute(pt, osg::StateAttribute::ON);
+    if (size <= 0.0) {
+        size = 0.01;
+    }
+    osg::ref_ptr<osg::Point> pt = new osg::Point(size);
+
+    for (const auto& lodlevel : lodlevels) {
+        lodlevel.pointGeom->getOrCreateStateSet()->setAttribute(pt, osg::StateAttribute::ON);
     }
     emit propertyChanged("pointSize");
 }
@@ -173,4 +219,17 @@ void PCLPointCloudVisualization::setDownsampleRatio(double value)
     downsampleRatio=value;
     setDirty();
     emit propertyChanged("downsampleRatio");
+}
+
+bool PCLPointCloudVisualization::getAutoLod()
+{
+    return autoLod;
+}
+
+void PCLPointCloudVisualization::setAutoLod(bool b)
+{
+    if(autoLod != b)
+        setDirty();
+    autoLod = b;
+    emit propertyChanged("autoLod");
 }
