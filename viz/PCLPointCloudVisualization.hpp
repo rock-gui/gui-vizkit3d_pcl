@@ -5,12 +5,15 @@
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 #include <osg/Geode>
 #include <pcl/PCLPointCloud2.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 #include <osg/Geometry>
 
 namespace vizkit3d
 {
     class PCLPointCloudVisualization
         : public vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>
+        , public vizkit3d::VizPluginAddType<pcl::PointCloud<pcl::PointXYZ>>
         , boost::noncopyable
     {
 
@@ -59,6 +62,10 @@ namespace vizkit3d
         Q_INVOKABLE void updateData(pcl::PCLPointCloud2 const &sample)
         {vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>::updateData(sample);}
 
+        Q_INVOKABLE void updateData(pcl::PointCloud<pcl::PointXYZ> const &sample)
+        {vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>::updateData(sample);}
+
+
         bool getUpdateFramePositionOnlyOnNewData() {
             return updateDataFramePosition;
         }
@@ -73,7 +80,9 @@ namespace vizkit3d
     protected:
         virtual osg::ref_ptr<osg::Node> createMainNode();
         virtual void updateMainNode(osg::Node* node);
-        virtual void updateDataIntern(pcl::PCLPointCloud2 const& plan);
+
+        virtual void updateDataIntern(const pcl::PCLPointCloud2 &data);
+        virtual void updateDataIntern(const pcl::PointCloud<pcl::PointXYZ> &data);
 
     private:
         struct Data;

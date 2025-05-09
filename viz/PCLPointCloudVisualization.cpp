@@ -17,7 +17,8 @@ struct PCLPointCloudVisualization::Data {
     // Copy of the value given to updateDataIntern.
     //
     // Making a copy is required because of how OSG works
-    pcl::PCLPointCloud2 data;
+    pcl::PCLPointCloud2 pc2;
+    pcl::PointCloud<pcl::PointXYZ> pcxyz;
 };
 
 
@@ -78,7 +79,6 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 
 void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 {
-
     lodlevels.clear();
     lodnode->removeChildren(0, lodnode->getNumChildren());
 
@@ -86,35 +86,48 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     if (autoLod){
         // lower max visibility of the full cloud (set below)
         maxviz = 50;
-        addLodLevel(50,100,0.5);
-        addLodLevel(100,130,0.1);
-        addLodLevel(130,FLT_MAX,0.01);
+        addLodLevel(50,100,4);  //each from 50 to 100m distance display each 2nd point
+        addLodLevel(100,130,16);
+        addLodLevel(130,FLT_MAX,100); // actually clipped out be near far plane
     }
 
     // add the default layer (not downsampled)
     addLodLevel(0, maxviz, 1);
-
 
     for (const auto& lodlevel : lodlevels) {
 
         lodlevel.pointsOSG->clear();
         lodlevel.color->clear();
         // dispatch PCLPointCloud2 to osg format
-        PointCloudDispatcher::dispatch(p->data, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio * lodlevel.downsample);
+        int skip = lodlevel.downsample / downsampleRatio; // downsample skip should increase with a lower ratio
+
+        if (p->pc2.width > 0 || p->pc2.height > 0) {
+            PointCloudDispatcher::dispatch(p->pc2, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
+        } else if (p->pcxyz.size()) {
+            PointCloudDispatcher::dispatch(p->pcxyz, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
+        }
         lodlevel.drawArrays->setCount(lodlevel.pointsOSG->size());
         lodlevel.pointGeom->setVertexArray(lodlevel.pointsOSG);
         lodlevel.pointGeom->setColorArray(lodlevel.color);
     }
-
 }
 
-void PCLPointCloudVisualization::updateDataIntern(pcl::PCLPointCloud2 const& value)
+void PCLPointCloudVisualization::updateDataIntern(const pcl::PCLPointCloud2 &data)
 {
     if (updateDataFramePosition)
     {
         updateManualVizPose();
     }
-    p->data = value;
+    p->pc2 = data;
+}
+
+void PCLPointCloudVisualization::updateDataIntern(const pcl::PointCloud<pcl::PointXYZ> &data)
+{
+    if (updateDataFramePosition)
+    {
+        updateManualVizPose();
+    }
+    p->pcxyz = data;
 }
 
 QColor PCLPointCloudVisualization::getDefaultFeatureColor()
