@@ -58,19 +58,6 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
     osg::ref_ptr<osg::Group> mainNode = new osg::Group();
 
     lodnode = new osg::LOD();
-
-    float maxviz = FLT_MAX;
-    if (autoLod){
-        // lower max visibility of the full cloud (set below)
-        maxviz = 50;
-        addLodLevel(50,100,0.5);
-        addLodLevel(100,130,0.1);
-        addLodLevel(130,FLT_MAX,0.01);
-    }
-
-    // add the default layer (not downsampled)
-    addLodLevel(0, maxviz, 1);
-
     mainNode->addChild(lodnode);
 
     setPointSize(DEFAULT_POINT_SIZE);
@@ -85,22 +72,20 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     float maxviz = FLT_MAX;
     if (autoLod){
         // lower max visibility of the full cloud (set below)
-        maxviz = 50;
-        addLodLevel(50,100,4);  //each from 50 to 100m distance display each 2nd point
-        addLodLevel(100,130,16);
-        addLodLevel(130,FLT_MAX,100); // actually clipped out be near far plane
+        maxviz = 40;
+        addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
+        addLodLevel(80,120,16);
+        addLodLevel(120,FLT_MAX,100); // actually clipped out be near far plane
     }
 
     // add the default layer (not downsampled)
     addLodLevel(0, maxviz, 1);
 
     for (const auto& lodlevel : lodlevels) {
-
         lodlevel.pointsOSG->clear();
         lodlevel.color->clear();
         // dispatch PCLPointCloud2 to osg format
         int skip = lodlevel.downsample / downsampleRatio; // downsample skip should increase with a lower ratio
-
         if (p->pc2.width > 0 || p->pc2.height > 0) {
             PointCloudDispatcher::dispatch(p->pc2, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
         } else if (p->pcxyz.size()) {
