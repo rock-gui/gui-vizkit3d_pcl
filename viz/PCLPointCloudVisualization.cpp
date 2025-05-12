@@ -72,10 +72,10 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     float maxviz = FLT_MAX;
     if (autoLod){
         // lower max visibility of the full cloud (set below)
-        maxviz = 40;
-        lodnode->addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
-        lodnode->addLodLevel(80,120,16);
-        lodnode->addLodLevel(120,FLT_MAX,100); // actually clipped out be near far plane
+        maxviz = 60;
+        lodnode->addLodLevel(maxviz,100,4);  //each from 50 to 100m distance display each 2nd point
+        lodnode->addLodLevel(100,160,16);
+        lodnode->addLodLevel(160,FLT_MAX,100); // actually clipped out be near far plane
     }
 
     // add the default layer (not downsampled)
@@ -83,14 +83,10 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 
     // dispatch PCLPointCloud2 to osg format
     if (p->pc2.width > 0 || p->pc2.height > 0) {
-        // PointCloudDispatcher::dispatch(p->pc2, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
-        // lodnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
+        lodnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
     } else if (p->pcxyz.size()) {
-        // PointCloudDispatcher::dispatch(p->pcxyz, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
         lodnode->dispatch(p->pcxyz, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
     }
-        
-    
 }
 
 void PCLPointCloudVisualization::updateDataIntern(const pcl::PCLPointCloud2 &data)
