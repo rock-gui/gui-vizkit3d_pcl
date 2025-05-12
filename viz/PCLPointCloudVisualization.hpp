@@ -3,11 +3,9 @@
 
 #include <boost/noncopyable.hpp>
 #include <vizkit3d/Vizkit3DPlugin.hpp>
-#include <osg/Geode>
-#include <pcl/PCLPointCloud2.h>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <osg/Geometry>
+
+
+#include "PCLPointCloudNode.hpp"
 
 namespace vizkit3d
 {
@@ -88,7 +86,7 @@ namespace vizkit3d
         struct Data;
         Data* p;
         osg::Vec4f default_feature_color;
-        osg::ref_ptr<osg::LOD> lodnode;
+        osg::ref_ptr<PCLPointCloudNode> lodnode;
         std::vector<LodLevel> lodlevels; 
 
         bool show_color;

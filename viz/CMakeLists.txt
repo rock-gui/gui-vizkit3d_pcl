@@ -28,9 +28,11 @@ rock_find_qt5(OPTIONAL)
 set (SOURCES PluginLoader.cpp
              PCLPointCloudVisualization.cpp
              PolygonMeshVisualization.cpp
+             PCLPointCloudNode.cpp
     )
 
-set (HEADERS PCLPointCloudVisualization.hpp
+set (HEADERS PCLPointCloudNode.hpp
+             PCLPointCloudVisualization.hpp
              PolygonMeshVisualization.hpp
              PointCloudDispatcher.hpp
     )

@@ -57,7 +57,7 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 {
     osg::ref_ptr<osg::Group> mainNode = new osg::Group();
 
-    lodnode = new osg::LOD();
+    lodnode = new PCLPointCloudNode();
     mainNode->addChild(lodnode);
 
     setPointSize(DEFAULT_POINT_SIZE);
@@ -66,35 +66,31 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 
 void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 {
-    lodlevels.clear();
-    lodnode->removeChildren(0, lodnode->getNumChildren());
+    
+    lodnode->clear();
 
     float maxviz = FLT_MAX;
     if (autoLod){
         // lower max visibility of the full cloud (set below)
         maxviz = 40;
-        addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
-        addLodLevel(80,120,16);
-        addLodLevel(120,FLT_MAX,100); // actually clipped out be near far plane
+        lodnode->addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
+        lodnode->addLodLevel(80,120,16);
+        lodnode->addLodLevel(120,FLT_MAX,100); // actually clipped out be near far plane
     }
 
     // add the default layer (not downsampled)
-    addLodLevel(0, maxviz, 1);
+    lodnode->addLodLevel(0, maxviz, 1);
 
-    for (const auto& lodlevel : lodlevels) {
-        lodlevel.pointsOSG->clear();
-        lodlevel.color->clear();
-        // dispatch PCLPointCloud2 to osg format
-        int skip = lodlevel.downsample / downsampleRatio; // downsample skip should increase with a lower ratio
-        if (p->pc2.width > 0 || p->pc2.height > 0) {
-            PointCloudDispatcher::dispatch(p->pc2, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
-        } else if (p->pcxyz.size()) {
-            PointCloudDispatcher::dispatch(p->pcxyz, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
-        }
-        lodlevel.drawArrays->setCount(lodlevel.pointsOSG->size());
-        lodlevel.pointGeom->setVertexArray(lodlevel.pointsOSG);
-        lodlevel.pointGeom->setColorArray(lodlevel.color);
+    // dispatch PCLPointCloud2 to osg format
+    if (p->pc2.width > 0 || p->pc2.height > 0) {
+        // PointCloudDispatcher::dispatch(p->pc2, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
+        // lodnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
+    } else if (p->pcxyz.size()) {
+        // PointCloudDispatcher::dispatch(p->pcxyz, lodlevel.pointsOSG, lodlevel.color, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, skip);
+        lodnode->dispatch(p->pcxyz, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
     }
+        
+    
 }
 
 void PCLPointCloudVisualization::updateDataIntern(const pcl::PCLPointCloud2 &data)
