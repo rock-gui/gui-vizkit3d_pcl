@@ -4,7 +4,6 @@
 #include <boost/noncopyable.hpp>
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 
-
 #include "PCLPointCloudNode.hpp"
 
 namespace vizkit3d
@@ -72,8 +71,6 @@ namespace vizkit3d
             updateDataFramePosition = newvalue;
             setManualVizPoseUpdateEnabled(updateDataFramePosition);
         }
-
-        void addLodLevel(const float& from, const float& to, const float& downsample);
 
     protected:
         virtual osg::ref_ptr<osg::Node> createMainNode();

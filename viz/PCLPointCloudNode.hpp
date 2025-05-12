@@ -33,6 +33,10 @@ class PCLPointCloudNode : public osg::LOD {
 
     void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample);
 
+    LodLevel* getLodLevel(const size_t& index){
+        return &(lodlevels[index]);
+    }
+
  protected:
 
     void dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, double maxz, float downsample);

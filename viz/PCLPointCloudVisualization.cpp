@@ -1,7 +1,6 @@
 #include <iostream>
 #include <limits>
 #include "PCLPointCloudVisualization.hpp"
-#include "PointCloudDispatcher.hpp"
 #include <pcl/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/common/io.h>
@@ -30,27 +29,6 @@ PCLPointCloudVisualization::PCLPointCloudVisualization()
 PCLPointCloudVisualization::~PCLPointCloudVisualization()
 {
     delete p;
-}
-
-
-void PCLPointCloudVisualization::addLodLevel(const float& from, const float& to, const float& downsample) {
-    LodLevel level;
-    level.downsample = downsample;
-    level.pointGeom = new osg::Geometry;
-    level.pointsOSG = new osg::Vec3Array;
-    level.pointGeom->setVertexArray(level.pointsOSG);
-    level.color = new osg::Vec4Array;
-    level.pointGeom->setColorArray(level.color);
-    level.pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-    level.pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    level.drawArrays = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, level.pointsOSG->size() );
-    level.pointGeom->addPrimitiveSet(level.drawArrays.get());
-    level.geode = new osg::Geode;
-    level.geode->addDrawable(level.pointGeom.get());
-    
-    lodlevels.push_back(level);
-
-    lodnode->addChild(level.geode, from, to);
 }
 
 osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()

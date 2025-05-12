@@ -1,6 +1,5 @@
 #include <iostream>
 #include "PolygonMeshVisualization.hpp"
-#include "PointCloudDispatcher.hpp"
 #include <pcl/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/common/io.h>
@@ -31,41 +30,17 @@ osg::ref_ptr< osg::Node > PolygonMeshVisualization::createMainNode()
     osg::ref_ptr<osg::Group> mainNode = new osg::Group();
 
     // set up point cloud
-    pointGeom = new osg::Geometry;
-    pointsOSG = new osg::Vec3Array;
-    pointGeom->setVertexArray(pointsOSG);
-    color = new osg::Vec4Array;
-    pointGeom->setColorArray(color);
-    pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-    pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    lodnode = new PCLPointCloudNode();
+    mainNode->addChild(lodnode);
 
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    geode->addDrawable(pointGeom.get());
-    mainNode->addChild(geode);
     return mainNode;
 }
 
 void PolygonMeshVisualization::updateMainNode(osg::Node* node)
 {
-    pointsOSG->clear();
-    color->clear();
-    pointGeom->removePrimitiveSet(0, pointGeom->getNumPrimitiveSets());
-
-    // dispatch PCLPointCloud2 to osg format
-    PointCloudDispatcher::dispatch(p->data.cloud, pointsOSG, color, default_feature_color, show_color, show_intensity, false, std::numeric_limits<double>::max(), 1.0);
-
-    if(colorize_height)
-    {
-        for(size_t i = 0; i < pointsOSG->size(); i++)
-        {
-            double hue = (pointsOSG->at(i).z() - std::floor(pointsOSG->at(i).z() / colorize_interval) * colorize_interval) / colorize_interval;
-            osg::Vec4& c = color->at(i);
-            hslToRgb(hue, 1.0, 0.5, c.r(), c.g(), c.b());
-        }
-    }
-
-    pointGeom->setVertexArray(pointsOSG);
-    pointGeom->setColorArray(color);
+    lodnode->clear();
+    lodnode->addLodLevel(0, FLT_MAX, 1);
+    lodnode->dispatch(p->data.cloud, default_feature_color, show_color, show_intensity, false, std::numeric_limits<double>::max(), 1.0);
 
     // generate polygons
     for(std::vector<pcl::Vertices>::const_iterator it = p->data.polygons.begin(); it != p->data.polygons.end(); it++)
@@ -77,7 +52,7 @@ void PolygonMeshVisualization::updateMainNode(osg::Node* node)
         {
             (*polygon)[i] = it->vertices[i];
         }
-        pointGeom->addPrimitiveSet(polygon);
+        lodnode->getLodLevel(0)->pointGeom->addPrimitiveSet(polygon);
     }
 }
 
