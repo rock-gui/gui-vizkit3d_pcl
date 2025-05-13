@@ -35,8 +35,8 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 {
     osg::ref_ptr<osg::Group> mainNode = new osg::Group();
 
-    lodnode = new PCLPointCloudNode();
-    mainNode->addChild(lodnode);
+    cloudnode = new PCLPointCloudNode();
+    mainNode->addChild(cloudnode);
 
     setPointSize(DEFAULT_POINT_SIZE);
     return mainNode;
@@ -45,25 +45,27 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 {
     
-    lodnode->clear();
+    cloudnode->clear();
 
     float maxviz = FLT_MAX;
     if (autoLod){
         // lower max visibility of the full cloud (set below)
-        maxviz = 60;
-        lodnode->addLodLevel(maxviz,100,4);  //each from 50 to 100m distance display each 2nd point
-        lodnode->addLodLevel(100,160,16);
-        lodnode->addLodLevel(160,FLT_MAX,100); // actually clipped out be near far plane
+        cloudnode->setSubCloudBoxes(20,20,20);
+        cloudnode->clear(); // <- reset to use setSubCloudBoxes
+        maxviz = 40;
+        cloudnode->addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
+        cloudnode->addLodLevel(80,120,16);
+        cloudnode->addLodLevel(120,FLT_MAX,100); // actually clipped out be near far plane
     }
 
     // add the default layer (not downsampled)
-    lodnode->addLodLevel(0, maxviz, 1);
+    cloudnode->addLodLevel(0, maxviz, 1);
 
     // dispatch PCLPointCloud2 to osg format
     if (p->pc2.width > 0 || p->pc2.height > 0) {
-        lodnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
+        cloudnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
     } else if (p->pcxyz.size()) {
-        lodnode->dispatch(p->pcxyz, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
+        cloudnode->dispatch(p->pcxyz, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
     }
 }
 

@@ -83,7 +83,7 @@ namespace vizkit3d
         struct Data;
         Data* p;
         osg::Vec4f default_feature_color;
-        osg::ref_ptr<PCLPointCloudNode> lodnode;
+        osg::ref_ptr<PCLPointCloudNode> cloudnode;
         std::vector<LodLevel> lodlevels; 
 
         bool show_color;
