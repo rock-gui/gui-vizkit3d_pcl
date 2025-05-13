@@ -34,7 +34,6 @@ set (SOURCES PluginLoader.cpp
 set (HEADERS PCLPointCloudNode.hpp
              PCLPointCloudVisualization.hpp
              PolygonMeshVisualization.hpp
-             PointCloudDispatcher.hpp
     )
 set (MOC PluginLoader.hpp
          PCLPointCloudVisualization.hpp
