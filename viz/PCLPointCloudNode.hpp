@@ -13,77 +13,6 @@
 
 class PCLPointCloudNode : public osg::Group {
  public:
-    // class LodLevel {
-    //  public:
-    //     LodLevel(){
-    //         group = new osg::Group;
-            
-    //         addPrimitiveSet();
-    //     }
-
-    //     /**
-    //      * @brief 
-    //      * creates a new arraw set and moves "active" variables back in list (they are in the osg graph, no need to access anymore)
-    //      */
-    //     void addPrimitiveSet() {
-    //         geode.push_back(new osg::Geode);
-    //         color.push_back(new osg::Vec4Array);
-    //         pointsOSG.push_back(new osg::Vec3Array);
-
-    //         drawArrays.push_back(new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, pointsOSG.back()->size() ));
-    //         pointGeom.push_back(new osg::Geometry);
-
-
-    //         pointGeom.back()->setColorArray(color.back());
-    //         pointGeom.back()->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-    //         pointGeom.back()->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    //         pointGeom.back()->setVertexArray(pointsOSG.back());
-    //         pointGeom.back()->addPrimitiveSet(drawArrays.back().get());
-
-    //         geode.back()->addDrawable(pointGeom.back().get());
-
-    //         //add new geode to graph
-    //         group->addChild(geode.back());
-    //     }
-
-    //     osg::ref_ptr<osg::Group> getRootNode() {
-    //         return group;
-    //     }
-
-    //     // osg::ref_ptr<osg::Geode> getGeode() {
-    //     //     return geode.back();
-    //     // }
-
-    //     osg::ref_ptr<osg::Vec3Array> getPoints() {
-    //         return pointsOSG.back();
-    //     }
-
-    //     osg::ref_ptr<osg::Vec4Array> getColors() {
-    //         return color.back();
-    //     }
-
-    //     osg::ref_ptr<osg::Geometry> getPointGeom() {
-    //         return pointGeom.back();
-    //     }
-
-    //     osg::ref_ptr<osg::DrawArrays> getDrawArrays() {
-    //         return drawArrays.back();
-    //     }
-
-    //     float downsample;
-    //     int downsampleSkip;
-
-    //  private:
-    //     osg::ref_ptr<osg::Group> group;
-    //     std::list<osg::ref_ptr<osg::Geode>> geode;
-
-    //     std::list<osg::ref_ptr<osg::Vec3Array>> pointsOSG;
-    //     std::list<osg::ref_ptr<osg::DrawArrays>> drawArrays;
-    //     std::list<osg::ref_ptr<osg::Geometry>> pointGeom;
-    //     std::list<osg::ref_ptr<osg::Vec4Array>> color;
-
-        
-    // };
     class LodLevel {
      public:
         LodLevel(){
@@ -120,10 +49,6 @@ class PCLPointCloudNode : public osg::Group {
         osg::ref_ptr<osg::Group> getRootNode() {
             return group;
         }
-
-        // osg::ref_ptr<osg::Geode> getGeode() {
-        //     return geode.back();
-        // }
 
         osg::ref_ptr<osg::Vec3Array> getPoints() {
             return pointsOSG;
@@ -224,9 +149,7 @@ class PCLPointCloudNode : public osg::Group {
             return *((*this)[index]);
         }
 
-        
         size_t xsize,ysize,zsize;
-
         osg::ref_ptr<osg::Group> osgGroup;
 
      private:
@@ -257,7 +180,6 @@ class PCLPointCloudNode : public osg::Group {
 
     LodLevel* getLodLevel(const size_t& index) {
         return subClouds->get(0,0,0).getLodLevel(index);
-        // return &(lodlevels[index]);
     }
 
  protected:
@@ -296,73 +218,32 @@ class PCLPointCloudNode : public osg::Group {
         {
             for (auto &lodlevel: lodCube->getLodLevels())
             {
-                //todo: move to xyz loop below or each lodCube knows its index
                 lodlevel.getPoints()->clear();
                 lodlevel.getColors()->clear();
-                // int cloudsize = (pc.size() * downsample) / subClouds->size(); // just an estimate, boxes might have lower/higer points count but still speeds it up
-                // lodlevel.pointsOSG->reserve(cloudsize);
-                // lodlevel.color->reserve(cloudsize);
                 lodlevel.downsampleSkip = lodlevel.downsample / downsample;
             }
         }
 
-        // for (int z = 0; z < subClouds->zsize;++z) {
-        //     for (int y = 0; y < subClouds->ysize;++y) {
-        //         for (int x = 0; x < subClouds->xsize;++x) {
-        //             LODCube& cube = subClouds->get(x,y,z);
-        //             cube.lodnode->setCenterMode(osg::LOD::USER_DEFINED_CENTER);
-        //             // osg::Vec3d center (x*cubesizex+cubesizex/2.0,y*cubesizey+cubesizey/2.0,z*cubesizez+cubesizez/2.0);
-        //             osg::Vec3d center (0,0,0);
-        //             cube.lodnode->setCenter(center);
-        //             // cube.lodnode->setRadius(cubesizex); // todo, use max?
-        //             // cube.lodnode->setRangeMode()
-        //             // cube.pose->setPosition(osg::Vec3d(x*cubesizex+cubesizex/2.0,y*cubesizey+cubesizey/2.0,z*cubesizez+cubesizez/2.0));
-        //         }
-        //     }
-        // }
-
         for(size_t i = 0; i < pc.size(); ++i)
         {
-            if (pc[i].z < maxz) {
-
-                //add skew to have smaller cubes at center
-                // double xfactor = (pc[i].x/maxPt.x);
-                // double yfactor = (pc[i].y/maxPt.y);
-                // double zfactor = (pc[i].z/maxPt.z);
-
-                // const double shiftfactor = 1.9;
-
+            if (pc[i].z < maxz)
+            {
                 // ((pc[i].x-minPt.x) / sizex) percentage on x axis the factor (1.3) make the render cubes smaller
                 size_t xindex = ((pc[i].x-minPt.x) / sizex) * (subClouds->xsize-1);
                 size_t yindex = ((pc[i].y-minPt.y) / sizey) * (subClouds->ysize-1);
                 size_t zindex = ((pc[i].z-minPt.z) / sizez) * (subClouds->zsize-1);
-                
-
-                // if (xindex > subClouds->xsize) {
-                //     xindex = subClouds->xsize;
-                // }
-                // if (yindex > subClouds->ysize) {
-                //     yindex = subClouds->ysize;
-                // }
-                // if (zindex > subClouds->zsize) {
-                //     zindex = subClouds->zsize;
-                // }
 
                 LODCube &cube = subClouds->get(xindex, yindex, zindex);
                 std::vector<LodLevel> &lodlevels = cube.getLodLevels();
-                // osg::Vec3d cubepos = cube.pose->getPosition();
-
                 
                 for (auto &lodlevel: lodlevels)
                 {
-                    if (i % lodlevel.downsampleSkip == 0) {
-
+                    if (i % lodlevel.downsampleSkip == 0) 
+                    {
                         POINTTYPE point = pc[i];
-                        // point.x -= cubepos.x();
-                        // point.y -= cubepos.y();
-                        // point.z -= cubepos.z();
                         if (lodlevel.getPoints()->size() >= 10000) {
-                            // printf("%s:%i\n", __PRETTY_FUNCTION__, __LINE__);
+                            // 10000 points per primitive set is advised fo better performance, so create a new one
+                            // to put new points into it
                             lodlevel.getDrawArrays()->setCount(lodlevel.getPoints()->size());
                             lodlevel.addPrimitiveSet();
                         }
@@ -378,23 +259,10 @@ class PCLPointCloudNode : public osg::Group {
             for (auto &lodlevel: lodCube->getLodLevels())
             {
                 lodlevel.getDrawArrays()->setCount(lodlevel.getPoints()->size());
-                //shrink allocated arrays
-                // lodlevel.pointsOSG->reserve(lodlevel.pointsOSG->size());
-                // lodlevel.color->reserve(lodlevel.color->size());
             }
         }
         // update cubes in osg graph
         subClouds->update();
-
-        // for (int z = 0; z < subClouds->zsize;++z) {
-        //     for (int y = 0; y < subClouds->ysize;++y) {
-        //         for (int x = 0; x < subClouds->xsize;++x) {
-        //             LODCube& lods = subClouds->get(x,y,z);
-        //             printf("%i,%i,%i size: %li\n", x,y,z, lods.getLodLevel(0)->pointsOSG->size());
-        //         }
-        //     }
-        // }
-        
     }
 
 
