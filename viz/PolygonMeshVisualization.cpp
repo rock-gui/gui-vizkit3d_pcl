@@ -52,7 +52,7 @@ void PolygonMeshVisualization::updateMainNode(osg::Node* node)
         {
             (*polygon)[i] = it->vertices[i];
         }
-        lodnode->getLodLevel(0)->pointGeom->addPrimitiveSet(polygon);
+        lodnode->getLodLevel(0)->getPointGeom()->addPrimitiveSet(polygon);
     }
 }
 

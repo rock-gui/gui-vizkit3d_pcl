@@ -33,6 +33,7 @@ namespace vizkit3d
     Q_PROPERTY(double maxZ READ getMaxZ WRITE setMaxZ)
     Q_PROPERTY(double downsampleRatio READ getDownsampleRatio WRITE setDownsampleRatio)
     Q_PROPERTY(bool autoLod READ getAutoLod WRITE setAutoLod)
+    Q_PROPERTY(int cubeSplitting READ getCubeSplitting WRITE setCubeSplitting)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -51,6 +52,8 @@ namespace vizkit3d
         void setDownsampleRatio(double value);
         bool getAutoLod();
         void setAutoLod(bool b);
+        int getCubeSplitting();
+        void setCubeSplitting(int b);
 
     public:
         PCLPointCloudVisualization();
@@ -93,6 +96,7 @@ namespace vizkit3d
         double maxZ;
         double downsampleRatio;
         bool autoLod;
+        int cubeSplitting;
     };
 }
 #endif

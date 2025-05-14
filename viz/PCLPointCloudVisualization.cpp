@@ -22,7 +22,16 @@ struct PCLPointCloudVisualization::Data {
 
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
-    : p(new Data), default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)), show_color(true), show_intensity(false), updateDataFramePosition(false), useHeightColoring(false), maxZ(std::numeric_limits<double>::max()), downsampleRatio(1), autoLod(false)
+    : p(new Data),
+    default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)),
+    show_color(true),
+    show_intensity(false),
+    updateDataFramePosition(false),
+    useHeightColoring(false),
+    maxZ(std::numeric_limits<double>::max()),
+    downsampleRatio(1),
+    autoLod(false),
+    cubeSplitting(1)
 {
 }
 
@@ -44,14 +53,11 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
 
 void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 {
-    
-    cloudnode->clear();
-
+    cloudnode->setSubCloudBoxes(cubeSplitting,cubeSplitting,cubeSplitting);
+    cloudnode->clear(); // <- reset to use setSubCloudBoxes
     float maxviz = FLT_MAX;
     if (autoLod){
         // lower max visibility of the full cloud (set below)
-        cloudnode->setSubCloudBoxes(20,20,20);
-        cloudnode->clear(); // <- reset to use setSubCloudBoxes
         maxviz = 40;
         cloudnode->addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
         cloudnode->addLodLevel(80,120,16);
@@ -203,3 +209,17 @@ void PCLPointCloudVisualization::setAutoLod(bool b)
     autoLod = b;
     emit propertyChanged("autoLod");
 }
+
+int PCLPointCloudVisualization::getCubeSplitting()
+{
+    return cubeSplitting;
+}
+
+void PCLPointCloudVisualization::setCubeSplitting(int b)
+{
+    if(cubeSplitting != b)
+        setDirty();
+    cubeSplitting = (b<1)?1:b;
+    emit propertyChanged("cubeSplitting");
+}
+

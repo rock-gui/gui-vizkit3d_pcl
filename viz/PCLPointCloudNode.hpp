@@ -1,9 +1,10 @@
 #pragma once
 
+#include <list>
+
 #include <osg/LOD>
 #include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/PositionAttitudeTransform>
 
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/point_types.h>
@@ -12,43 +13,166 @@
 
 class PCLPointCloudNode : public osg::Group {
  public:
-    struct LodLevel {
+    // class LodLevel {
+    //  public:
+    //     LodLevel(){
+    //         group = new osg::Group;
+            
+    //         addPrimitiveSet();
+    //     }
+
+    //     /**
+    //      * @brief 
+    //      * creates a new arraw set and moves "active" variables back in list (they are in the osg graph, no need to access anymore)
+    //      */
+    //     void addPrimitiveSet() {
+    //         geode.push_back(new osg::Geode);
+    //         color.push_back(new osg::Vec4Array);
+    //         pointsOSG.push_back(new osg::Vec3Array);
+
+    //         drawArrays.push_back(new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, pointsOSG.back()->size() ));
+    //         pointGeom.push_back(new osg::Geometry);
+
+
+    //         pointGeom.back()->setColorArray(color.back());
+    //         pointGeom.back()->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+    //         pointGeom.back()->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    //         pointGeom.back()->setVertexArray(pointsOSG.back());
+    //         pointGeom.back()->addPrimitiveSet(drawArrays.back().get());
+
+    //         geode.back()->addDrawable(pointGeom.back().get());
+
+    //         //add new geode to graph
+    //         group->addChild(geode.back());
+    //     }
+
+    //     osg::ref_ptr<osg::Group> getRootNode() {
+    //         return group;
+    //     }
+
+    //     // osg::ref_ptr<osg::Geode> getGeode() {
+    //     //     return geode.back();
+    //     // }
+
+    //     osg::ref_ptr<osg::Vec3Array> getPoints() {
+    //         return pointsOSG.back();
+    //     }
+
+    //     osg::ref_ptr<osg::Vec4Array> getColors() {
+    //         return color.back();
+    //     }
+
+    //     osg::ref_ptr<osg::Geometry> getPointGeom() {
+    //         return pointGeom.back();
+    //     }
+
+    //     osg::ref_ptr<osg::DrawArrays> getDrawArrays() {
+    //         return drawArrays.back();
+    //     }
+
+    //     float downsample;
+    //     int downsampleSkip;
+
+    //  private:
+    //     osg::ref_ptr<osg::Group> group;
+    //     std::list<osg::ref_ptr<osg::Geode>> geode;
+
+    //     std::list<osg::ref_ptr<osg::Vec3Array>> pointsOSG;
+    //     std::list<osg::ref_ptr<osg::DrawArrays>> drawArrays;
+    //     std::list<osg::ref_ptr<osg::Geometry>> pointGeom;
+    //     std::list<osg::ref_ptr<osg::Vec4Array>> color;
+
+        
+    // };
+    class LodLevel {
+     public:
+        LodLevel(){
+            group = new osg::Group;
+            
+            addPrimitiveSet();
+        }
+
+        /**
+         * @brief 
+         * creates a new arraw set and moves "active" variables back in list (they are in the osg graph, no need to access anymore)
+         */
+        void addPrimitiveSet() {
+            // replace old set, they are still referenced in the group
+            geode = new osg::Geode;
+            color = new osg::Vec4Array;
+            pointsOSG = new osg::Vec3Array;
+
+            drawArrays = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, pointsOSG->size() );
+            pointGeom = new osg::Geometry;
+
+
+            pointGeom->setColorArray(color);
+            pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+            pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+            pointGeom->setVertexArray(pointsOSG);
+            pointGeom->addPrimitiveSet(drawArrays.get());
+            geode->addDrawable(pointGeom.get());
+
+            //add new geode to graph
+            group->addChild(geode);
+        }
+
+        osg::ref_ptr<osg::Group> getRootNode() {
+            return group;
+        }
+
+        // osg::ref_ptr<osg::Geode> getGeode() {
+        //     return geode.back();
+        // }
+
+        osg::ref_ptr<osg::Vec3Array> getPoints() {
+            return pointsOSG;
+        }
+
+        osg::ref_ptr<osg::Vec4Array> getColors() {
+            return color;
+        }
+
+        osg::ref_ptr<osg::Geometry> getPointGeom() {
+            return pointGeom;
+        }
+
+        osg::ref_ptr<osg::DrawArrays> getDrawArrays() {
+            return drawArrays;
+        }
+
         float downsample;
         int downsampleSkip;
+
+     private:
+        osg::ref_ptr<osg::Group> group;
+
+        osg::ref_ptr<osg::Geode> geode;
+
         osg::ref_ptr<osg::Vec3Array> pointsOSG;
         osg::ref_ptr<osg::DrawArrays> drawArrays;
         osg::ref_ptr<osg::Geometry> pointGeom;
         osg::ref_ptr<osg::Vec4Array> color;
-        osg::ref_ptr<osg::Geode> geode;
-    };
 
+        
+    };
 
     class LODCube {
      public:
         LODCube() {
             lodnode = new osg::LOD;
-            pose = new osg::PositionAttitudeTransform;
-            pose->addChild(lodnode);
+            // pose = new osg::PositionAttitudeTransform;
+            // pose->addChild(lodnode);
         }
 
         void addLodLevel(const float& from, const float& to, const float& downsample) {
             LodLevel level;
             level.downsample = downsample;
-            level.pointGeom = new osg::Geometry;
-            level.pointsOSG = new osg::Vec3Array;
-            level.pointGeom->setVertexArray(level.pointsOSG);
-            level.color = new osg::Vec4Array;
-            level.pointGeom->setColorArray(level.color);
-            level.pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-            level.pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-            level.drawArrays = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, level.pointsOSG->size() );
-            level.pointGeom->addPrimitiveSet(level.drawArrays.get());
-            level.geode = new osg::Geode;
-            level.geode->addDrawable(level.pointGeom.get());
+            
             
             lodlevels.push_back(level);
 
-            lodnode->addChild(level.geode, from, to);
+            lodnode->addChild(level.getRootNode(), from, to);
         }
 
         LodLevel* getLodLevel(const size_t& index){
@@ -59,10 +183,11 @@ class PCLPointCloudNode : public osg::Group {
             return lodlevels;
         }
 
-        osg::ref_ptr<osg::PositionAttitudeTransform> pose;
+        // osg::ref_ptr<osg::PositionAttitudeTransform> pose;
+        osg::ref_ptr<osg::LOD> lodnode;
 
      private:
-        osg::ref_ptr<osg::LOD> lodnode;
+        
         std::vector<LodLevel> lodlevels;
 
     };
@@ -86,9 +211,9 @@ class PCLPointCloudNode : public osg::Group {
             osgGroup->removeChildren(0, osgGroup->getNumChildren());
             for (auto& lodCube : *this)
             {
-                //only add child it has content
-                if (lodCube->getLodLevel(0)->pointsOSG) {
-                    osgGroup->addChild(lodCube->pose);
+                //only add child if it has contents
+                if (lodCube->getLodLevel(0)->getPoints()->size()) {
+                    osgGroup->addChild(lodCube->lodnode);
                 }
                                 
             }
@@ -143,20 +268,18 @@ class PCLPointCloudNode : public osg::Group {
     void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pcl_cloud, const osg::Vec4f& default_feature_color, double maxz, float downsample);
 
 
-    template <class POINTTYPE> void traversePoints(const pcl::PointCloud<POINTTYPE>& pc, const float& downsample, const float& maxz, std::function <void(const pcl::PointCloud<POINTTYPE>&, LodLevel&, const size_t&, POINTTYPE &, POINTTYPE &)> cb) {
+    /**
+     * @brief template to handle points of the input point cloud, calls the callback for each point, providing the structure to put the point into
+     * cb has to handle/compute points and color information and add it to the osg structure
+     * 
+     * @tparam POINTTYPE 
+     * @param pc 
+     * @param downsample 
+     * @param maxz 
+     * @param cb 
+     */
+    template <class POINTTYPE> void traversePoints(const pcl::PointCloud<POINTTYPE>& pc, const float& downsample, const float& maxz, std::function <void(const POINTTYPE&, LodLevel&, POINTTYPE &, POINTTYPE &)> cb) {
 
-        for (auto& lodCube : *subClouds)
-        {
-            for (auto &lodlevel: lodCube->getLodLevels())
-            {
-                lodlevel.pointsOSG->clear();
-                lodlevel.color->clear();
-                // int cloudsize = (pc.size() * downsample) / subClouds->size(); // just an estimate, boxes might have lower/higer points count but still speeds it up
-                // lodlevel.pointsOSG->reserve(cloudsize);
-                // lodlevel.color->reserve(cloudsize);
-                lodlevel.downsampleSkip = lodlevel.downsample / downsample;
-            }
-        }
         POINTTYPE minPt, maxPt;
         pcl::getMinMax3D (pc, minPt, maxPt);
 
@@ -168,6 +291,35 @@ class PCLPointCloudNode : public osg::Group {
 
         double sizez = maxPt.z - minPt.z;
         double cubesizez = (double)sizez/(double)(subClouds->zsize-1);
+
+        for (auto& lodCube : *subClouds)
+        {
+            for (auto &lodlevel: lodCube->getLodLevels())
+            {
+                //todo: move to xyz loop below or each lodCube knows its index
+                lodlevel.getPoints()->clear();
+                lodlevel.getColors()->clear();
+                // int cloudsize = (pc.size() * downsample) / subClouds->size(); // just an estimate, boxes might have lower/higer points count but still speeds it up
+                // lodlevel.pointsOSG->reserve(cloudsize);
+                // lodlevel.color->reserve(cloudsize);
+                lodlevel.downsampleSkip = lodlevel.downsample / downsample;
+            }
+        }
+
+        // for (int z = 0; z < subClouds->zsize;++z) {
+        //     for (int y = 0; y < subClouds->ysize;++y) {
+        //         for (int x = 0; x < subClouds->xsize;++x) {
+        //             LODCube& cube = subClouds->get(x,y,z);
+        //             cube.lodnode->setCenterMode(osg::LOD::USER_DEFINED_CENTER);
+        //             // osg::Vec3d center (x*cubesizex+cubesizex/2.0,y*cubesizey+cubesizey/2.0,z*cubesizez+cubesizez/2.0);
+        //             osg::Vec3d center (0,0,0);
+        //             cube.lodnode->setCenter(center);
+        //             // cube.lodnode->setRadius(cubesizex); // todo, use max?
+        //             // cube.lodnode->setRangeMode()
+        //             // cube.pose->setPosition(osg::Vec3d(x*cubesizex+cubesizex/2.0,y*cubesizey+cubesizey/2.0,z*cubesizez+cubesizez/2.0));
+        //         }
+        //     }
+        // }
 
         for(size_t i = 0; i < pc.size(); ++i)
         {
@@ -198,22 +350,34 @@ class PCLPointCloudNode : public osg::Group {
 
                 LODCube &cube = subClouds->get(xindex, yindex, zindex);
                 std::vector<LodLevel> &lodlevels = cube.getLodLevels();
+                // osg::Vec3d cubepos = cube.pose->getPosition();
 
+                
                 for (auto &lodlevel: lodlevels)
                 {
                     if (i % lodlevel.downsampleSkip == 0) {
-                            cb(pc, lodlevel, i, minPt, maxPt);
+
+                        POINTTYPE point = pc[i];
+                        // point.x -= cubepos.x();
+                        // point.y -= cubepos.y();
+                        // point.z -= cubepos.z();
+                        if (lodlevel.getPoints()->size() >= 10000) {
+                            // printf("%s:%i\n", __PRETTY_FUNCTION__, __LINE__);
+                            lodlevel.getDrawArrays()->setCount(lodlevel.getPoints()->size());
+                            lodlevel.addPrimitiveSet();
+                        }
+                        cb(point, lodlevel, minPt, maxPt);
                     }
                 }
             }
         }
 
-        //after sorting, add sizes
+        //after sorting, set sizes
         for (auto& lodCube : *subClouds)
         {
             for (auto &lodlevel: lodCube->getLodLevels())
             {
-                lodlevel.drawArrays->setCount(lodlevel.pointsOSG->size());
+                lodlevel.getDrawArrays()->setCount(lodlevel.getPoints()->size());
                 //shrink allocated arrays
                 // lodlevel.pointsOSG->reserve(lodlevel.pointsOSG->size());
                 // lodlevel.color->reserve(lodlevel.color->size());
