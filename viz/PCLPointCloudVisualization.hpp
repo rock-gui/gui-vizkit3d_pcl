@@ -14,15 +14,6 @@ namespace vizkit3d
         , boost::noncopyable
     {
 
-        struct LodLevel {
-            float downsample;
-            osg::ref_ptr<osg::Vec3Array> pointsOSG;
-            osg::ref_ptr<osg::DrawArrays> drawArrays;
-            osg::ref_ptr<osg::Geometry> pointGeom;
-            osg::ref_ptr<osg::Vec4Array> color;
-            osg::ref_ptr<osg::Geode> geode;
-        };
-
     Q_OBJECT
     Q_PROPERTY(QColor defaultFeatureColor READ getDefaultFeatureColor WRITE setDefaultFeatureColor)
     Q_PROPERTY(double pointSize READ getPointSize WRITE setPointSize)
@@ -87,7 +78,6 @@ namespace vizkit3d
         Data* p;
         osg::Vec4f default_feature_color;
         osg::ref_ptr<PCLPointCloudNode> cloudnode;
-        std::vector<LodLevel> lodlevels; 
 
         bool show_color;
         bool show_intensity;

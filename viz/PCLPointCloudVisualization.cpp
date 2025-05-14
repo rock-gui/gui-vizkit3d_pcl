@@ -4,7 +4,6 @@
 #include <pcl/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/common/io.h>
-#include <osg/Point>
 #include <osg/LOD>
 #include <osgUtil/Simplifier>
 
@@ -112,13 +111,12 @@ void PCLPointCloudVisualization::setDefaultFeatureColor(QColor color)
 
 double PCLPointCloudVisualization::getPointSize()
 {
-    if(lodlevels.size() && lodlevels.front().pointGeom.valid())
+    if(cloudnode)
     {
-        osg::Point *pt = dynamic_cast<osg::Point*>(lodlevels.front().pointGeom->getOrCreateStateSet()->getAttribute(osg::StateAttribute::POINT));
-        if(pt)
-            return pt->getSize();
+        return cloudnode->getPointSize();
     }
     return DEFAULT_POINT_SIZE;
+    
 }
 
 void PCLPointCloudVisualization::setPointSize(double size)
@@ -126,11 +124,10 @@ void PCLPointCloudVisualization::setPointSize(double size)
     if (size <= 0.0) {
         size = 0.01;
     }
-    osg::ref_ptr<osg::Point> pt = new osg::Point(size);
-
-    for (const auto& lodlevel : lodlevels) {
-        lodlevel.pointGeom->getOrCreateStateSet()->setAttribute(pt, osg::StateAttribute::ON);
+    if (cloudnode){
+        cloudnode->setPointSize(size);
     }
+    
     emit propertyChanged("pointSize");
 }
 

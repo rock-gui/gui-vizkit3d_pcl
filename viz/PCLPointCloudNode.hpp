@@ -3,6 +3,7 @@
 #include <list>
 
 #include <osg/LOD>
+#include <osg/Point>
 #include <osg/Geode>
 #include <osg/Geometry>
 
@@ -13,6 +14,7 @@
 
 class PCLPointCloudNode : public osg::Group {
  public:
+
     class LodLevel {
      public:
         LodLevel(){
@@ -26,58 +28,70 @@ class PCLPointCloudNode : public osg::Group {
          * creates a new arraw set and moves "active" variables back in list (they are in the osg graph, no need to access anymore)
          */
         void addPrimitiveSet() {
-            // replace old set, they are still referenced in the group
-            geode = new osg::Geode;
-            color = new osg::Vec4Array;
-            pointsOSG = new osg::Vec3Array;
+            geode.push_back(new osg::Geode);
+            color.push_back(new osg::Vec4Array);
+            pointsOSG.push_back(new osg::Vec3Array);
 
-            drawArrays = new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, pointsOSG->size() );
-            pointGeom = new osg::Geometry;
+            drawArrays.push_back(new osg::DrawArrays( osg::PrimitiveSet::POINTS, 0, pointsOSG.back()->size() ));
+            pointGeom.push_back(new osg::Geometry);
 
 
-            pointGeom->setColorArray(color);
-            pointGeom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-            pointGeom->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-            pointGeom->setVertexArray(pointsOSG);
-            pointGeom->addPrimitiveSet(drawArrays.get());
-            geode->addDrawable(pointGeom.get());
+            pointGeom.back()->setColorArray(color.back());
+            pointGeom.back()->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+            pointGeom.back()->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+            pointGeom.back()->setVertexArray(pointsOSG.back());
+            pointGeom.back()->addPrimitiveSet(drawArrays.back().get());
+
+            geode.back()->addDrawable(pointGeom.back().get());
 
             //add new geode to graph
-            group->addChild(geode);
+            group->addChild(geode.back());
         }
 
         osg::ref_ptr<osg::Group> getRootNode() {
             return group;
         }
 
+        // osg::ref_ptr<osg::Geode> getGeode() {
+        //     return geode.back();
+        // }
+
         osg::ref_ptr<osg::Vec3Array> getPoints() {
-            return pointsOSG;
+            return pointsOSG.back();
         }
 
         osg::ref_ptr<osg::Vec4Array> getColors() {
-            return color;
+            return color.back();
         }
 
         osg::ref_ptr<osg::Geometry> getPointGeom() {
-            return pointGeom;
+            return pointGeom.back();
         }
 
         osg::ref_ptr<osg::DrawArrays> getDrawArrays() {
-            return drawArrays;
+            return drawArrays.back();
         }
 
         float downsample;
         int downsampleSkip;
 
+        void setPointSize(const double &size) {
+            osg::ref_ptr<osg::Point> pt = new osg::Point(size);
+            for (auto& geom : pointGeom) {
+                geom->getOrCreateStateSet()->setAttribute(pt, osg::StateAttribute::ON);
+            }
+        }
+        
+        double getPointSize();
+
      private:
         osg::ref_ptr<osg::Group> group;
+        std::list<osg::ref_ptr<osg::Geode>> geode;
 
-        osg::ref_ptr<osg::Geode> geode;
-
-        osg::ref_ptr<osg::Vec3Array> pointsOSG;
-        osg::ref_ptr<osg::DrawArrays> drawArrays;
-        osg::ref_ptr<osg::Geometry> pointGeom;
-        osg::ref_ptr<osg::Vec4Array> color;
+        std::list<osg::ref_ptr<osg::Vec3Array>> pointsOSG;
+        std::list<osg::ref_ptr<osg::DrawArrays>> drawArrays;
+        std::list<osg::ref_ptr<osg::Geometry>> pointGeom;
+        std::list<osg::ref_ptr<osg::Vec4Array>> color;
 
         
     };
@@ -178,9 +192,12 @@ class PCLPointCloudNode : public osg::Group {
 
     void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample);
 
-    LodLevel* getLodLevel(const size_t& index) {
-        return subClouds->get(0,0,0).getLodLevel(index);
+    LodLevel* getDefaultLodLevel() {
+        return subClouds->get(0,0,0).getLodLevel(0);
     }
+
+    void setPointSize(const double & size);
+    double getPointSize();
 
  protected:
 
@@ -276,8 +293,7 @@ class PCLPointCloudNode : public osg::Group {
     size_t subCloudsZ;
     float cycle_color_interval;
     
-    osg::ref_ptr<osg::Vec3Array> osg_points;
-    osg::ref_ptr<osg::Vec4Array> osg_colors;
+    double pointsize;
 
 
 };

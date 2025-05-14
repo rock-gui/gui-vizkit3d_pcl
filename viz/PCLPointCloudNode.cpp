@@ -5,7 +5,7 @@
 #include <pcl/common/common.h>
 #include <pcl/common/io.h>
 
-PCLPointCloudNode::PCLPointCloudNode():subCloudsX(1),subCloudsY(1),subCloudsZ(1) {
+PCLPointCloudNode::PCLPointCloudNode():subCloudsX(1),subCloudsY(1),subCloudsZ(1),pointsize(1) {
     subClouds = std::make_shared<SubClouds>(subCloudsX,subCloudsY,subCloudsZ);
     addChild(subClouds->osgGroup);
 }
@@ -14,6 +14,21 @@ void PCLPointCloudNode::addLodLevel(const float& from, const float& to, const fl
     for (auto& subcloud : *subClouds) {
         subcloud->addLodLevel(from, to, downsample);
     }
+}
+
+void PCLPointCloudNode::setPointSize(const double & size) {
+    pointsize = size;
+    for (auto& lodCube : *subClouds)
+    {
+        for (auto &lodlevel: lodCube->getLodLevels())
+        {
+            lodlevel.setPointSize(pointsize);
+        }
+    }
+}
+
+double PCLPointCloudNode::getPointSize() {
+    return pointsize;
 }
 
 
