@@ -57,10 +57,11 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     float maxviz = FLT_MAX;
     if (autoLod){
         // lower max visibility of the full cloud (set below)
-        maxviz = 40;
-        cloudnode->addLodLevel(maxviz,80,4);  //each from 50 to 100m distance display each 2nd point
-        cloudnode->addLodLevel(80,120,16);
-        cloudnode->addLodLevel(120,FLT_MAX,100); // actually clipped out be near far plane
+        maxviz = 50;
+        cloudnode->addLodLevel(maxviz,100,4);  //each from 50 to 100m distance display each 2nd point
+        cloudnode->addLodLevel(100,200,16);
+        cloudnode->addLodLevel(200,300,32);
+        cloudnode->addLodLevel(300,FLT_MAX,64); // actually clipped out be near far plane
     }
 
     // add the default layer (not downsampled)
