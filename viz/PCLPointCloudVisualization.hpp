@@ -85,6 +85,7 @@ namespace vizkit3d
         bool useHeightColoring;
         double maxZ;
         double downsampleRatio;
+        double pointSize;
         bool autoLod;
         int cubeSplitting;
     };

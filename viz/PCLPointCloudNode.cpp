@@ -55,7 +55,7 @@ void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg
     else if (useHeightColoring) {
         pcl::PointCloud<pcl::PointXYZ> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, default_feature_color, show_color, show_intensity, useHeightColoring, maxz, downsample);
+        dispatch(pc, default_feature_color, useHeightColoring, maxz, downsample);
     }
     else
     {
@@ -63,7 +63,6 @@ void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
         dispatch(pc, default_feature_color, maxz, downsample);   
     }
-        
 }
 
 void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pc, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, double maxz, float downsample) {
@@ -95,31 +94,37 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, cons
     });
 }
 
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample) {
-    bool color_cycle_set = false;
+/**
+ * this may be used directly, so we need to take care of useHeightColoring
+ */
+void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool useHeightColoring, double maxz, float downsample) {
+    if (!useHeightColoring) {
+        dispatch(pc, default_feature_color, maxz, downsample);
+    }else{
+        bool color_cycle_set = false;
+        traversePoints<pcl::PointXYZ>(pc, downsample, maxz, [&](const pcl::PointXYZ& point, LodLevel &lodlevel, const pcl::PointXYZ& minPt, const pcl::PointXYZ& maxPt){
 
-    traversePoints<pcl::PointXYZ>(pc, downsample, maxz, [&](const pcl::PointXYZ& point, LodLevel &lodlevel, const pcl::PointXYZ& minPt, const pcl::PointXYZ& maxPt){
-
-        if (!color_cycle_set) {
-            if (maxz == std::numeric_limits<double>::max()) {
-                cycle_color_interval = sqrt((maxPt.z - minPt.z) * (maxPt.z - minPt.z));
-            } else {
-                cycle_color_interval = sqrt((maxz - minPt.z) * (maxz - minPt.z));
+            if (!color_cycle_set) {
+                if (maxz == std::numeric_limits<double>::max()) {
+                    cycle_color_interval = sqrt((maxPt.z - minPt.z) * (maxPt.z - minPt.z));
+                } else {
+                    cycle_color_interval = sqrt((maxz - minPt.z) * (maxz - minPt.z));
+                }
+                color_cycle_set = true;
             }
-            color_cycle_set = true;
-        }
 
-        lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
-        //cal height based on
-        float hue = (point.z - std::floor(point.z / cycle_color_interval) * cycle_color_interval) / cycle_color_interval;
-        float sat = 1; 
-        float lum = 0.5;
-        float alpha = default_feature_color[3]; //use opacity of set color
-        osg::Vec4f heightcolor;
-        vizkit3d::hslToRgb(hue, sat, lum , heightcolor.x(), heightcolor.y(), heightcolor.z());
-        heightcolor.w() = alpha;
-        lodlevel.getColors()->push_back(heightcolor);
-    });
+            lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
+            //cal height based on
+            float hue = (point.z - std::floor(point.z / cycle_color_interval) * cycle_color_interval) / cycle_color_interval;
+            float sat = 1; 
+            float lum = 0.5;
+            float alpha = default_feature_color[3]; //use opacity of set color
+            osg::Vec4f heightcolor;
+            vizkit3d::hslToRgb(hue, sat, lum , heightcolor.x(), heightcolor.y(), heightcolor.z());
+            heightcolor.w() = alpha;
+            lodlevel.getColors()->push_back(heightcolor);
+        });
+    }
 }
 
 void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, double maxz, float downsample) {

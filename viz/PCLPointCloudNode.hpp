@@ -188,7 +188,7 @@ class PCLPointCloudNode : public osg::Group {
 
     void addLodLevel(const float& from, const float& to, const float& downsample);
 
-    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample);
+    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool useHeightColoring, double maxz, float downsample);
 
     void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample);
 
@@ -223,13 +223,13 @@ class PCLPointCloudNode : public osg::Group {
         pcl::getMinMax3D (pc, minPt, maxPt);
 
         double sizex = maxPt.x - minPt.x;
-        double cubesizex = (double)sizex/(double)(subClouds->xsize-1);
+        // double cubesizex = (double)sizex/(double)(subClouds->xsize-1);
 
         double sizey = maxPt.y - minPt.y;
-        double cubesizey = (double)sizey/(double)(subClouds->ysize-1);
+        // double cubesizey = (double)sizey/(double)(subClouds->ysize-1);
 
         double sizez = maxPt.z - minPt.z;
-        double cubesizez = (double)sizez/(double)(subClouds->zsize-1);
+        // double cubesizez = (double)sizez/(double)(subClouds->zsize-1);
 
         for (auto& lodCube : *subClouds)
         {

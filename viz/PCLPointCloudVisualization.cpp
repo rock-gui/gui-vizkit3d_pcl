@@ -29,6 +29,7 @@ PCLPointCloudVisualization::PCLPointCloudVisualization()
     useHeightColoring(false),
     maxZ(std::numeric_limits<double>::max()),
     downsampleRatio(1),
+    pointSize(1),
     autoLod(false),
     cubeSplitting(1)
 {
@@ -71,8 +72,9 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     if (p->pc2.width > 0 || p->pc2.height > 0) {
         cloudnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
     } else if (p->pcxyz.size()) {
-        cloudnode->dispatch(p->pcxyz, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
+        cloudnode->dispatch(p->pcxyz, default_feature_color, useHeightColoring, maxZ, downsampleRatio);
     }
+    cloudnode->setPointSize(pointSize);
 }
 
 void PCLPointCloudVisualization::updateDataIntern(const pcl::PCLPointCloud2 &data)
@@ -128,7 +130,7 @@ void PCLPointCloudVisualization::setPointSize(double size)
     if (cloudnode){
         cloudnode->setPointSize(size);
     }
-    
+    pointSize = size;
     emit propertyChanged("pointSize");
 }
 
