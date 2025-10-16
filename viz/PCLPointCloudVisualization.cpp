@@ -8,9 +8,6 @@
 #include <osgUtil/Simplifier>
 
 
-#include "PCLPointCloudNode.hpp"
-
-
 using namespace vizkit3d;
 
 const double DEFAULT_POINT_SIZE = 2.0;
@@ -26,13 +23,9 @@ struct PCLPointCloudVisualization::Data {
 
 PCLPointCloudVisualization::PCLPointCloudVisualization()
     : p(new Data),
-    default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)),
     show_color(true),
     show_intensity(false),
     updateDataFramePosition(false),
-    useHeightColoring(false),
-    maxZ(std::numeric_limits<double>::max()),
-    downsampleRatio(1),
     pointSize(1),
     autoLod(false),
     cubeSplitting(1)
@@ -74,9 +67,9 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 
     // dispatch PCLPointCloud2 to osg format
     if (p->pc2.width > 0 || p->pc2.height > 0) {
-        cloudnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio, getCamera());
+        cloudnode->dispatch(p->pc2, dispatchConfig, show_color, show_intensity, getCamera());
     } else if (p->pcxyz.size()) {
-        cloudnode->dispatch(p->pcxyz, default_feature_color, useHeightColoring, maxZ, downsampleRatio, getCamera());
+        cloudnode->dispatch(p->pcxyz, dispatchConfig, getCamera());
     }
     cloudnode->setPointSize(pointSize);
 }
@@ -102,17 +95,17 @@ void PCLPointCloudVisualization::updateDataIntern(const pcl::PointCloud<pcl::Poi
 QColor PCLPointCloudVisualization::getDefaultFeatureColor()
 {
     QColor color;
-    color.setRgbF(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), default_feature_color.w());
+    color.setRgbF(dispatchConfig.default_feature_color.x(), dispatchConfig.default_feature_color.y(), dispatchConfig.default_feature_color.z(), dispatchConfig.default_feature_color.w());
     return color;
 }
 
 void PCLPointCloudVisualization::setDefaultFeatureColor(QColor color)
 {
     setDirty();
-    default_feature_color.x() = color.redF();
-    default_feature_color.y() = color.greenF();
-    default_feature_color.z() = color.blueF();
-    default_feature_color.w() = color.alphaF();
+    dispatchConfig.default_feature_color.x() = color.redF();
+    dispatchConfig.default_feature_color.y() = color.greenF();
+    dispatchConfig.default_feature_color.z() = color.blueF();
+    dispatchConfig.default_feature_color.w() = color.alphaF();
     emit propertyChanged("defaultFeatureColor");
 }
 
@@ -166,37 +159,60 @@ void PCLPointCloudVisualization::setShowIntensity(bool b)
 
 bool PCLPointCloudVisualization::getUseHeightColoring()
 {
-    return useHeightColoring;
+    return dispatchConfig.useHeightColoring;
 }
 
 void PCLPointCloudVisualization::setUseHeightColoring(bool b)
 {
-    if(useHeightColoring != b)
+    if(dispatchConfig.useHeightColoring != b)
         setDirty();
-    useHeightColoring = b;
+    dispatchConfig.useHeightColoring = b;
     emit propertyChanged("useHeightColoring");
+}
+
+bool PCLPointCloudVisualization::getCutZ()
+{
+    return dispatchConfig.cut;
+}
+void PCLPointCloudVisualization::setCutZ(bool b)
+{
+    dispatchConfig.cut = b;
+    setDirty();
+    emit propertyChanged("cutZ");
+}
+
+double PCLPointCloudVisualization::getMinZ()
+{
+    return dispatchConfig.minz;
+}
+
+void PCLPointCloudVisualization::setMinZ(double value)
+{
+    dispatchConfig.minz=value;
+    setDirty();
+    emit propertyChanged("minZ");
 }
 
 double PCLPointCloudVisualization::getMaxZ()
 {
-    return maxZ;
+    return dispatchConfig.maxz;
 }
 
 void PCLPointCloudVisualization::setMaxZ(double value)
 {
-    maxZ=value;
+    dispatchConfig.maxz=value;
     setDirty();
     emit propertyChanged("maxZ");
 }
 
 double PCLPointCloudVisualization::getDownsampleRatio()
 {
-    return downsampleRatio;
+    return dispatchConfig.downsample;
 }
 
 void PCLPointCloudVisualization::setDownsampleRatio(double value)
 {
-    downsampleRatio=value;
+    dispatchConfig.downsample=value;
     setDirty();
     emit propertyChanged("downsampleRatio");
 }

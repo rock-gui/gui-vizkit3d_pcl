@@ -209,44 +209,44 @@ void PCLPointCloudNode::enbableHeightColorShader(osg::Node* parent, osg::Camera*
     }
 }
 
-void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample, osg::Camera* cam) {
+void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const DispatchConfig& config, bool show_color, bool show_intensity, osg::Camera* cam) {
     if(pcl::getFieldIndex(pcl_cloud, "rgba") != -1 && (show_color || show_intensity))
     {
         pcl::PointCloud<pcl::PointXYZRGBA> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, default_feature_color, show_color, show_intensity, maxz, downsample);
+        dispatch(pc, config, show_color, show_intensity);
     }
     else if(show_color && pcl::getFieldIndex(pcl_cloud, "rgb") != -1)
     {
         pcl::PointCloud<pcl::PointXYZRGB> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, maxz, downsample);
+        dispatch(pc, config);
     }
     else if(show_intensity && pcl::getFieldIndex(pcl_cloud, "intensity") != -1)
     {
         pcl::PointCloud<pcl::PointXYZI> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, default_feature_color, maxz, downsample);
+        dispatch(pc, config);
 
     }
-    else if (useHeightColoring) {
+    else if (config.useHeightColoring) {
         pcl::PointCloud<pcl::PointXYZ> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, default_feature_color, useHeightColoring, maxz, downsample);
+        dispatch(pc, config);
     }
     else
     {
         pcl::PointCloud<pcl::PointXYZ> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, default_feature_color, maxz, downsample);   
+        dispatch(pc, config);   
     }
 }
 
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pc, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, double maxz, float downsample) {
-    traversePoints<pcl::PointXYZRGBA>(pc, downsample, maxz, [&](const pcl::PointXYZRGBA& point, LodLevel &lodlevel){
+void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pc, const DispatchConfig& config, bool show_color, bool show_intensity) {
+    traversePoints<pcl::PointXYZRGBA>(pc, config, [&](const pcl::PointXYZRGBA& point, LodLevel &lodlevel){
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         if(!show_color)
-            lodlevel.getColors()->push_back(osg::Vec4f(default_feature_color.x(), default_feature_color.y(), default_feature_color.z(), point.a/255.0));
+            lodlevel.getColors()->push_back(osg::Vec4f(config.default_feature_color.x(), config.default_feature_color.y(), config.default_feature_color.z(), point.a/255.0));
         else if(!show_intensity)
             lodlevel.getColors()->push_back(osg::Vec4f(point.r/255.0, point.g/255.0, point.b/255.0, 1.0));
         else
@@ -255,16 +255,16 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pc, c
 }
 
 
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGB>& pc, double maxz, float downsample) {
-    traversePoints<pcl::PointXYZRGB>(pc, downsample, maxz, [&](const pcl::PointXYZRGB& point, LodLevel &lodlevel){
+void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGB>& pc, const DispatchConfig& config) {
+    traversePoints<pcl::PointXYZRGB>(pc, config, [&](const pcl::PointXYZRGB& point, LodLevel &lodlevel){
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         lodlevel.getColors()->push_back(osg::Vec4f(point.r/255.0, point.g/255.0, point.b/255.0, 1.0));
     });
 }
 
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, const osg::Vec4f& default_feature_color, double maxz, float downsample) {        
-    traversePoints<pcl::PointXYZI>(pc, downsample, maxz, [&](const pcl::PointXYZI& point, LodLevel &lodlevel){
-        osg::Vec4f feature_color = default_feature_color;
+void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, const DispatchConfig& config) {        
+    traversePoints<pcl::PointXYZI>(pc, config, [&](const pcl::PointXYZI& point, LodLevel &lodlevel){
+        osg::Vec4f feature_color = config.default_feature_color;
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         feature_color.w() = point.intensity;
         lodlevel.getColors()->push_back(feature_color);
@@ -274,23 +274,23 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, cons
 /**
  * this may be used directly, so we need to take care of useHeightColoring
  */
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool useHeightColoring, double maxz, float downsample, osg::Camera* cam) {
-    if (!useHeightColoring) {
-        dispatch(pc, default_feature_color, maxz, downsample);
+void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const DispatchConfig& config, osg::Camera* cam) {
+    if (!config.useHeightColoring) {
+        dispatch(pc, config);
     }else{
         // bool color_cycle_set = false;
-        std::pair<pcl::PointXYZ, pcl::PointXYZ> minmax = traversePoints<pcl::PointXYZ>(pc, downsample, maxz, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
+        std::pair<pcl::PointXYZ, pcl::PointXYZ> minmax = traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
             lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
-            lodlevel.getColors()->push_back(default_feature_color);
+            lodlevel.getColors()->push_back(config.default_feature_color);
         },false,false,true);
         enbableHeightColorShader(subClouds->osgGroup, cam);
         setColorInterval(minmax.second.z-minmax.first.z);
     }
 }
 
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, double maxz, float downsample) {
-    traversePoints<pcl::PointXYZ>(pc, downsample, maxz, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
-        lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
-        lodlevel.getColors()->push_back(default_feature_color);
-    });
-}
+// void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const DispatchConfig& config) {
+//     traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
+//         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
+//         lodlevel.getColors()->push_back(default_feature_color);
+//     });
+// }

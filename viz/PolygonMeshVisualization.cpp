@@ -40,7 +40,9 @@ void PolygonMeshVisualization::updateMainNode(osg::Node* node)
 {
     lodnode->clear();
     lodnode->addLodLevel(0, FLT_MAX, 1);
-    lodnode->dispatch(p->data.cloud, default_feature_color, show_color, show_intensity, false, std::numeric_limits<double>::max(), 1.0);
+    PCLPointCloudNode::DispatchConfig dispatchConfig;
+    dispatchConfig.default_feature_color = default_feature_color;
+    lodnode->dispatch(p->data.cloud, dispatchConfig, show_color, show_intensity);
 
     // generate polygons
     for(std::vector<pcl::Vertices>::const_iterator it = p->data.polygons.begin(); it != p->data.polygons.end(); it++)

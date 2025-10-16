@@ -4,12 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 
-#include <pcl/PCLPointCloud2.h>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-
-
-class PCLPointCloudNode;
+#include "PCLPointCloudNode.hpp"
 
 namespace vizkit3d
 {
@@ -26,7 +21,9 @@ namespace vizkit3d
     Q_PROPERTY(bool useHeightColoring READ getUseHeightColoring WRITE setUseHeightColoring)
     Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
     Q_PROPERTY(bool updateFrameOnlyOnNewData READ getUpdateFramePositionOnlyOnNewData WRITE setUpdateFramePositionOnlyOnNewData)
+    Q_PROPERTY(bool cutZ READ getCutZ WRITE setCutZ)
     Q_PROPERTY(double maxZ READ getMaxZ WRITE setMaxZ)
+    Q_PROPERTY(double minZ READ getMaxZ WRITE setMinZ)
     Q_PROPERTY(double downsampleRatio READ getDownsampleRatio WRITE setDownsampleRatio)
     Q_PROPERTY(bool autoLod READ getAutoLod WRITE setAutoLod)
     Q_PROPERTY(int cubeSplitting READ getCubeSplitting WRITE setCubeSplitting)
@@ -42,8 +39,12 @@ namespace vizkit3d
         void setShowIntensity(bool b);
         bool getUseHeightColoring();
         void setUseHeightColoring(bool b);
+        bool getCutZ();
+        void setCutZ(bool b);
         double getMaxZ();
         void setMaxZ(double value);
+        double getMinZ();
+        void setMinZ(double value);
         double getDownsampleRatio();
         void setDownsampleRatio(double value);
         bool getAutoLod();
@@ -81,18 +82,17 @@ namespace vizkit3d
     private:
         struct Data;
         Data* p;
-        osg::Vec4f default_feature_color;
         osg::ref_ptr<PCLPointCloudNode> cloudnode;
 
         bool show_color;
         bool show_intensity;
         bool updateDataFramePosition;
-        bool useHeightColoring;
-        double maxZ;
-        double downsampleRatio;
+        
         double pointSize;
         bool autoLod;
         int cubeSplitting;
+
+        PCLPointCloudNode::DispatchConfig dispatchConfig;
     };
 }
 #endif

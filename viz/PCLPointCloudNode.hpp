@@ -15,6 +15,33 @@
 class PCLPointCloudNode : public osg::Group {
  public:
 
+    struct DispatchConfig {
+        DispatchConfig():
+            default_feature_color(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)),
+            useHeightColoring(false),
+            downsample(1),
+            cut(false),
+            minz(std::numeric_limits<double>::min()),
+            maxz(std::numeric_limits<double>::max())
+        {}
+
+        DispatchConfig(const osg::Vec4f& default_feature_color, const bool useHeightColoring, const bool cut, const double minz, const double maxz, const double downsample):
+            default_feature_color(default_feature_color),
+            useHeightColoring(useHeightColoring),
+            downsample(downsample),
+            cut(cut),
+            minz(minz),
+            maxz(maxz)
+        {}
+
+        osg::Vec4f default_feature_color;
+        bool useHeightColoring;
+        double downsample;
+        bool cut;
+        double minz, maxz;
+        
+    };
+
     class LodLevel {
      public:
         LodLevel(){
@@ -188,9 +215,10 @@ class PCLPointCloudNode : public osg::Group {
 
     void addLodLevel(const float& from, const float& to, const float& downsample);
 
-    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool useHeightColoring, double maxz, float downsample, osg::Camera* cam = nullptr);
 
-    void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample, osg::Camera* cam = nullptr);
+    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const DispatchConfig& config, osg::Camera* cam = nullptr);
+
+    void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const DispatchConfig& config, bool show_color, bool show_intensity, osg::Camera* cam = nullptr);
 
     LodLevel* getDefaultLodLevel() {
         return subClouds->get(0,0,0).getLodLevel(0);
@@ -205,10 +233,10 @@ class PCLPointCloudNode : public osg::Group {
     
     void enbableHeightColorShader(osg::Node* parent, osg::Camera* cam);
 
-    void dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, double maxz, float downsample);
-    void dispatch(const pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud, double maxz, float downsample);
-    void dispatch(const pcl::PointCloud<pcl::PointXYZI>& pcl_cloud, const osg::Vec4f& default_feature_color, double maxz, float downsample);
-    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pcl_cloud, const osg::Vec4f& default_feature_color, double maxz, float downsample);
+    void dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pcl_cloud, const DispatchConfig& config, bool show_color, bool show_intensity);
+    void dispatch(const pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud, const DispatchConfig& config);
+    void dispatch(const pcl::PointCloud<pcl::PointXYZI>& pcl_cloud, const DispatchConfig& config);
+    // void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pcl_cloud, const DispatchConfig& config);
 
     /**
      * @brief template to handle points of the input point cloud, calls the callback for each point, providing the structure to put the point into
@@ -220,7 +248,7 @@ class PCLPointCloudNode : public osg::Group {
      * @param maxz 
      * @param cb 
      */
-    template <class POINTTYPE> std::pair<POINTTYPE, POINTTYPE> traversePoints(const pcl::PointCloud<POINTTYPE>& pc, const float& downsample, const float& maxz, std::function <void(const POINTTYPE&, LodLevel&)> cb, bool calcMinMaxX = false, bool calcMinMaxY = false, bool calcMinMaxZ = false) {
+    template <class POINTTYPE> std::pair<POINTTYPE, POINTTYPE> traversePoints(const pcl::PointCloud<POINTTYPE>& pc, const DispatchConfig& config, std::function <void(const POINTTYPE&, LodLevel&)> cb, bool calcMinMaxX = false, bool calcMinMaxY = false, bool calcMinMaxZ = false) {
 
         // float nan = std::numeric_limits<float>::quiet_NaN();
         // POINTTYPE minPt(nan,nan,nan);
@@ -248,7 +276,7 @@ class PCLPointCloudNode : public osg::Group {
             {
                 lodlevel.getPoints()->clear();
                 lodlevel.getColors()->clear();
-                lodlevel.downsampleSkip = lodlevel.downsample / downsample;
+                lodlevel.downsampleSkip = lodlevel.downsample / config.downsample;
             }
         }
 
@@ -256,7 +284,7 @@ class PCLPointCloudNode : public osg::Group {
 
         for(size_t i = 0; i < pc.size(); ++i)
         {
-            if (pc[i].z < maxz)
+            if (!config.cut || (config.cut && pc[i].z > config.minz && pc[i].z < config.maxz))
             {
                 if (subClouds->size() == 1) {
                     if (calcMinMaxX) {
@@ -327,8 +355,17 @@ class PCLPointCloudNode : public osg::Group {
         }
         // update cubes in osg graph
         subClouds->update();
+
+        if (config.cut) {
+            // if cut (and minmax was calced before cutting, we need to override)
+            // does not really matter
+            minPt.z = config.minz;
+            maxPt.z = config.maxz;
+        }
         return {minPt,maxPt};
     }
+
+    
 
  private:
 
