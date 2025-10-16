@@ -188,9 +188,9 @@ class PCLPointCloudNode : public osg::Group {
 
     void addLodLevel(const float& from, const float& to, const float& downsample);
 
-    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool useHeightColoring, double maxz, float downsample);
+    void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const osg::Vec4f& default_feature_color, bool useHeightColoring, double maxz, float downsample, osg::Camera* cam = nullptr);
 
-    void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample);
+    void dispatch(const pcl::PCLPointCloud2& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, bool useHeightColoring, double maxz, float downsample, osg::Camera* cam = nullptr);
 
     LodLevel* getDefaultLodLevel() {
         return subClouds->get(0,0,0).getLodLevel(0);
@@ -199,13 +199,16 @@ class PCLPointCloudNode : public osg::Group {
     void setPointSize(const double & size);
     double getPointSize();
 
+    void setColorInterval(const float& interval);
+
  protected:
+    
+    void enbableHeightColorShader(osg::Node* parent, osg::Camera* cam);
 
     void dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pcl_cloud, const osg::Vec4f& default_feature_color, bool show_color, bool show_intensity, double maxz, float downsample);
     void dispatch(const pcl::PointCloud<pcl::PointXYZRGB>& pcl_cloud, double maxz, float downsample);
     void dispatch(const pcl::PointCloud<pcl::PointXYZI>& pcl_cloud, const osg::Vec4f& default_feature_color, double maxz, float downsample);
     void dispatch(const pcl::PointCloud<pcl::PointXYZ>& pcl_cloud, const osg::Vec4f& default_feature_color, double maxz, float downsample);
-
 
     /**
      * @brief template to handle points of the input point cloud, calls the callback for each point, providing the structure to put the point into
@@ -217,19 +220,27 @@ class PCLPointCloudNode : public osg::Group {
      * @param maxz 
      * @param cb 
      */
-    template <class POINTTYPE> void traversePoints(const pcl::PointCloud<POINTTYPE>& pc, const float& downsample, const float& maxz, std::function <void(const POINTTYPE&, LodLevel&, POINTTYPE &, POINTTYPE &)> cb) {
+    template <class POINTTYPE> std::pair<POINTTYPE, POINTTYPE> traversePoints(const pcl::PointCloud<POINTTYPE>& pc, const float& downsample, const float& maxz, std::function <void(const POINTTYPE&, LodLevel&)> cb, bool calcMinMaxX = false, bool calcMinMaxY = false, bool calcMinMaxZ = false) {
 
+        // float nan = std::numeric_limits<float>::quiet_NaN();
+        // POINTTYPE minPt(nan,nan,nan);
+        // POINTTYPE maxPt(nan,nan,nan);
         POINTTYPE minPt, maxPt;
-        pcl::getMinMax3D (pc, minPt, maxPt);
 
-        double sizex = maxPt.x - minPt.x;
-        // double cubesizex = (double)sizex/(double)(subClouds->xsize-1);
+        double sizex = 1;
+        double sizey = 0;
+        double sizez = 0;
 
-        double sizey = maxPt.y - minPt.y;
-        // double cubesizey = (double)sizey/(double)(subClouds->ysize-1);
+        // when we don't need to sort, we will calc minmax later for performance reasons need to cals regardless of option
+        if (subClouds->size() > 1) {
 
-        double sizez = maxPt.z - minPt.z;
-        // double cubesizez = (double)sizez/(double)(subClouds->zsize-1);
+            // POINTTYPE minPt, maxPt;
+            pcl::getMinMax3D (pc, minPt, maxPt);
+
+            sizex = maxPt.x - minPt.x;
+            sizey = maxPt.y - minPt.y;
+            sizez = maxPt.z - minPt.z;
+        }
 
         for (auto& lodCube : *subClouds)
         {
@@ -241,14 +252,49 @@ class PCLPointCloudNode : public osg::Group {
             }
         }
 
+        
+
         for(size_t i = 0; i < pc.size(); ++i)
         {
             if (pc[i].z < maxz)
             {
+                if (subClouds->size() == 1) {
+                    if (calcMinMaxX) {
+                        if (minPt.x > pc[i].x) {
+                            minPt.x = pc[i].x;
+                        }
+                        if (maxPt.x < pc[i].x) {
+                            maxPt.x = pc[i].x;
+                        }
+                    }
+                    if (calcMinMaxY) {
+                        if (minPt.y > pc[i].y) {
+                            minPt.y = pc[i].y;
+                        }
+                        if (maxPt.y < pc[i].y) {
+                            maxPt.y = pc[i].y;
+                        }
+                    }
+                    if (calcMinMaxZ) {
+                        if (minPt.z > pc[i].z) {
+                            minPt.z = pc[i].z;
+                        }
+                        if (maxPt.z < pc[i].z) {
+                            maxPt.z = pc[i].z;
+                        }
+                    }
+                }
+
                 // ((pc[i].x-minPt.x) / sizex) percentage on x axis the factor (1.3) make the render cubes smaller
-                size_t xindex = ((pc[i].x-minPt.x) / sizex) * (subClouds->xsize-1);
-                size_t yindex = ((pc[i].y-minPt.y) / sizey) * (subClouds->ysize-1);
-                size_t zindex = ((pc[i].z-minPt.z) / sizez) * (subClouds->zsize-1);
+                size_t xindex = 0;
+                size_t yindex = 0;
+                size_t zindex = 0;
+                if (subClouds->size() > 1) {
+                    // when subclouds are uses, we need to calculate the index of the subcloud based on point location
+                    xindex = ((pc[i].x-minPt.x) / sizex) * (subClouds->xsize-1);
+                    yindex = ((pc[i].y-minPt.y) / sizey) * (subClouds->ysize-1);
+                    zindex = ((pc[i].z-minPt.z) / sizez) * (subClouds->zsize-1);
+                }
 
                 LODCube &cube = subClouds->get(xindex, yindex, zindex);
                 std::vector<LodLevel> &lodlevels = cube.getLodLevels();
@@ -264,7 +310,8 @@ class PCLPointCloudNode : public osg::Group {
                             lodlevel.getDrawArrays()->setCount(lodlevel.getPoints()->size());
                             lodlevel.addPrimitiveSet();
                         }
-                        cb(point, lodlevel, minPt, maxPt);
+                        // at this point we need global minmax of the cloud
+                        cb(point, lodlevel);
                     }
                 }
             }
@@ -280,9 +327,8 @@ class PCLPointCloudNode : public osg::Group {
         }
         // update cubes in osg graph
         subClouds->update();
+        return {minPt,maxPt};
     }
-
-
 
  private:
 
@@ -295,5 +341,9 @@ class PCLPointCloudNode : public osg::Group {
     
     double pointsize;
 
+    osg::ref_ptr<osg::Program> program;
+    osg::ref_ptr<osg::Shader> fShader;
+    osg::ref_ptr<osg::Shader> vShader;
+    osg::ref_ptr<osg::Uniform> cycleColorIntervalUniform;
 
 };

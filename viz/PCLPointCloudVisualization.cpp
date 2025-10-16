@@ -74,9 +74,9 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
 
     // dispatch PCLPointCloud2 to osg format
     if (p->pc2.width > 0 || p->pc2.height > 0) {
-        cloudnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio);
+        cloudnode->dispatch(p->pc2, default_feature_color, show_color, show_intensity, useHeightColoring, maxZ, downsampleRatio, getCamera());
     } else if (p->pcxyz.size()) {
-        cloudnode->dispatch(p->pcxyz, default_feature_color, useHeightColoring, maxZ, downsampleRatio);
+        cloudnode->dispatch(p->pcxyz, default_feature_color, useHeightColoring, maxZ, downsampleRatio, getCamera());
     }
     cloudnode->setPointSize(pointSize);
 }
