@@ -7,6 +7,10 @@
 #include <osg/LOD>
 #include <osgUtil/Simplifier>
 
+
+#include "PCLPointCloudNode.hpp"
+
+
 using namespace vizkit3d;
 
 const double DEFAULT_POINT_SIZE = 2.0;

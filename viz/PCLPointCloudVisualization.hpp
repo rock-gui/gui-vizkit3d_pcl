@@ -4,7 +4,12 @@
 #include <boost/noncopyable.hpp>
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 
-#include "PCLPointCloudNode.hpp"
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+
+
+class PCLPointCloudNode;
 
 namespace vizkit3d
 {
