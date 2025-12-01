@@ -65,8 +65,9 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     // add the default layer (not downsampled)
     cloudnode->addLodLevel(0, maxviz, 1);
 
+    
     // dispatch PCLPointCloud2 to osg format
-    if (p->pc2.width > 0 || p->pc2.height > 0) {
+    if ((p->pc2.width > 0 || p->pc2.height > 0) && p->pc2.data.size()) {
         cloudnode->dispatch(p->pc2, dispatchConfig, show_color, show_intensity, getCamera());
     } else if (p->pcxyz.size()) {
         cloudnode->dispatch(p->pcxyz, dispatchConfig, getCamera());

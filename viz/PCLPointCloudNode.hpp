@@ -255,6 +255,10 @@ class PCLPointCloudNode : public osg::Group {
         // POINTTYPE maxPt(nan,nan,nan);
         POINTTYPE minPt, maxPt;
 
+        if (pc.size() == 0) {
+            return {minPt,maxPt};
+        }
+
         double sizex = 1;
         double sizey = 0;
         double sizez = 0;
