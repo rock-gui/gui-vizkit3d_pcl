@@ -3,21 +3,30 @@
 
 #include <boost/noncopyable.hpp>
 #include <vizkit3d/Vizkit3DPlugin.hpp>
-#include <osg/Geode>
-#include <pcl/PCLPointCloud2.h>
-#include <osg/Geometry>
+
+#include "PCLPointCloudNode.hpp"
 
 namespace vizkit3d
 {
     class PCLPointCloudVisualization
         : public vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>
+        , public vizkit3d::VizPluginAddType<pcl::PointCloud<pcl::PointXYZ>>
         , boost::noncopyable
     {
+
     Q_OBJECT
     Q_PROPERTY(QColor defaultFeatureColor READ getDefaultFeatureColor WRITE setDefaultFeatureColor)
     Q_PROPERTY(double pointSize READ getPointSize WRITE setPointSize)
     Q_PROPERTY(bool showColor READ getShowColor WRITE setShowColor)
+    Q_PROPERTY(bool useHeightColoring READ getUseHeightColoring WRITE setUseHeightColoring)
     Q_PROPERTY(bool showIntensity READ getShowIntensity WRITE setShowIntensity)
+    Q_PROPERTY(bool updateFrameOnlyOnNewData READ getUpdateFramePositionOnlyOnNewData WRITE setUpdateFramePositionOnlyOnNewData)
+    Q_PROPERTY(bool cutZ READ getCutZ WRITE setCutZ)
+    Q_PROPERTY(double maxZ READ getMaxZ WRITE setMaxZ)
+    Q_PROPERTY(double minZ READ getMaxZ WRITE setMinZ)
+    Q_PROPERTY(double downsampleRatio READ getDownsampleRatio WRITE setDownsampleRatio)
+    Q_PROPERTY(bool autoLod READ getAutoLod WRITE setAutoLod)
+    Q_PROPERTY(int cubeSplitting READ getCubeSplitting WRITE setCubeSplitting)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -28,6 +37,20 @@ namespace vizkit3d
         void setShowColor(bool b);
         bool getShowIntensity();
         void setShowIntensity(bool b);
+        bool getUseHeightColoring();
+        void setUseHeightColoring(bool b);
+        bool getCutZ();
+        void setCutZ(bool b);
+        double getMaxZ();
+        void setMaxZ(double value);
+        double getMinZ();
+        void setMinZ(double value);
+        double getDownsampleRatio();
+        void setDownsampleRatio(double value);
+        bool getAutoLod();
+        void setAutoLod(bool b);
+        int getCubeSplitting();
+        void setCubeSplitting(int b);
 
     public:
         PCLPointCloudVisualization();
@@ -36,21 +59,40 @@ namespace vizkit3d
         Q_INVOKABLE void updateData(pcl::PCLPointCloud2 const &sample)
         {vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>::updateData(sample);}
 
+        Q_INVOKABLE void updateData(pcl::PointCloud<pcl::PointXYZ> const &sample)
+        {vizkit3d::Vizkit3DPlugin<pcl::PCLPointCloud2>::updateData(sample);}
+
+
+        bool getUpdateFramePositionOnlyOnNewData() {
+            return updateDataFramePosition;
+        }
+
+        void setUpdateFramePositionOnlyOnNewData(const bool &newvalue) {
+            updateDataFramePosition = newvalue;
+            setManualVizPoseUpdateEnabled(updateDataFramePosition);
+        }
+
     protected:
         virtual osg::ref_ptr<osg::Node> createMainNode();
         virtual void updateMainNode(osg::Node* node);
-        virtual void updateDataIntern(pcl::PCLPointCloud2 const& plan);
+
+        virtual void updateDataIntern(const pcl::PCLPointCloud2 &data);
+        virtual void updateDataIntern(const pcl::PointCloud<pcl::PointXYZ> &data);
 
     private:
         struct Data;
         Data* p;
-        osg::Vec4f default_feature_color;
-        osg::ref_ptr<osg::Vec3Array> pointsOSG;
-        osg::ref_ptr<osg::DrawArrays> drawArrays;
-        osg::ref_ptr<osg::Geometry> pointGeom;
-        osg::ref_ptr<osg::Vec4Array> color;
+        osg::ref_ptr<PCLPointCloudNode> cloudnode;
+
         bool show_color;
         bool show_intensity;
+        bool updateDataFramePosition;
+        
+        double pointSize;
+        bool autoLod;
+        int cubeSplitting;
+
+        PCLPointCloudNode::DispatchConfig dispatchConfig;
     };
 }
 #endif
