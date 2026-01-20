@@ -190,7 +190,10 @@ double PCLPointCloudVisualization::getMinZ()
 void PCLPointCloudVisualization::setMinZ(double value)
 {
     dispatchConfig.minz=value;
-    setDirty();
+    if (dispatchConfig.cut)
+    {
+        setDirty();
+    }
     emit propertyChanged("minZ");
 }
 
@@ -202,7 +205,9 @@ double PCLPointCloudVisualization::getMaxZ()
 void PCLPointCloudVisualization::setMaxZ(double value)
 {
     dispatchConfig.maxz=value;
-    setDirty();
+    {
+        setDirty();
+    }
     emit propertyChanged("maxZ");
 }
 
