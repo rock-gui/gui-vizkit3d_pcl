@@ -1,8 +1,6 @@
 #pragma once
 
-#include "vizkit3d/Vizkit3DPlugin.hpp"
-#include "PCLPointCloudVisualization.hpp"
-#include "PolygonMeshVisualization.hpp"
+#include <vizkit3d/Vizkit3DPlugin.hpp>
 
 namespace vizkit3d {
     class QtPluginVizkitPCL : public vizkit3d::VizkitPluginFactory {
