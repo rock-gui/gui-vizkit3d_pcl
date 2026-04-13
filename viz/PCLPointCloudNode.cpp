@@ -232,7 +232,7 @@ void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const Dis
     else if (config.useHeightColoring) {
         pcl::PointCloud<pcl::PointXYZ> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
-        dispatch(pc, config);
+        dispatch(pc, config, cam);
     }
     else
     {
