@@ -275,14 +275,11 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, cons
  * this may be used directly, so we need to take care of useHeightColoring
  */
 void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const DispatchConfig& config, osg::Camera* cam) {
-    if (!config.useHeightColoring) {
-        dispatch(pc, config);
-    }else{
-        // bool color_cycle_set = false;
-        std::pair<pcl::PointXYZ, pcl::PointXYZ> minmax = traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
-            lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
-            lodlevel.getColors()->push_back(config.default_feature_color);
-        },false,false,true);
+    std::pair<pcl::PointXYZ, pcl::PointXYZ> minmax = traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
+        lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
+        lodlevel.getColors()->push_back(config.default_feature_color);
+    },false,false,true);
+    if (config.useHeightColoring) {
         enbableHeightColorShader(subClouds->osgGroup, cam);
         setColorInterval(minmax.second.z-minmax.first.z);
     }
