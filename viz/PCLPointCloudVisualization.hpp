@@ -5,6 +5,7 @@
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 
 #include "PCLPointCloudNode.hpp"
+#include "GaussianSplatNode.hpp"
 
 namespace vizkit3d
 {
@@ -27,6 +28,8 @@ namespace vizkit3d
     Q_PROPERTY(double downsampleRatio READ getDownsampleRatio WRITE setDownsampleRatio)
     Q_PROPERTY(bool autoLod READ getAutoLod WRITE setAutoLod)
     Q_PROPERTY(int cubeSplitting READ getCubeSplitting WRITE setCubeSplitting)
+    Q_PROPERTY(bool renderSplats READ getRenderSplats WRITE setRenderSplats)
+    Q_PROPERTY(double splatScale READ getSplatScale WRITE setSplatScale)
 
     public slots:
         QColor getDefaultFeatureColor();
@@ -51,6 +54,13 @@ namespace vizkit3d
         void setAutoLod(bool b);
         int getCubeSplitting();
         void setCubeSplitting(int b);
+        /**
+         * @brief render clouds containing gaussian splat fields (scale_*, rot_*, opacity, f_dc_*) as splats instead of points
+         */
+        bool getRenderSplats();
+        void setRenderSplats(bool b);
+        double getSplatScale();
+        void setSplatScale(double value);
 
     public:
         PCLPointCloudVisualization();
@@ -83,6 +93,7 @@ namespace vizkit3d
         struct Data;
         Data* p;
         osg::ref_ptr<PCLPointCloudNode> cloudnode;
+        osg::ref_ptr<GaussianSplatNode> splatnode;
 
         bool show_color;
         bool show_intensity;
@@ -91,6 +102,10 @@ namespace vizkit3d
         double pointSize;
         bool autoLod;
         int cubeSplitting;
+        bool renderSplats;
+        double splatScale;
+        // splat geometry is only rebuilt on new data, not on every property change
+        bool splatDataChanged;
 
         PCLPointCloudNode::DispatchConfig dispatchConfig;
     };
