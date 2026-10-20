@@ -24,10 +24,10 @@ rock_qt_vizkit_plugin(
         PCLPointCloudVisualization.cpp
         PolygonMeshVisualization.cpp
         PCLPointCloudNode.cpp
-        GaussianSplatNode.cpp
+        GaussianSplats.cpp
     HEADERS
         PCLPointCloudNode.hpp
-        GaussianSplatNode.hpp
+        GaussianSplats.hpp
         PCLPointCloudVisualization.hpp
         PolygonMeshVisualization.hpp
     MOC

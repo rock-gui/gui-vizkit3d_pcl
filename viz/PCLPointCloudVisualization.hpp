@@ -5,7 +5,6 @@
 #include <vizkit3d/Vizkit3DPlugin.hpp>
 
 #include "PCLPointCloudNode.hpp"
-#include "GaussianSplatNode.hpp"
 
 namespace vizkit3d
 {
@@ -93,7 +92,6 @@ namespace vizkit3d
         struct Data;
         Data* p;
         osg::ref_ptr<PCLPointCloudNode> cloudnode;
-        osg::ref_ptr<GaussianSplatNode> splatnode;
 
         bool show_color;
         bool show_intensity;
@@ -104,8 +102,6 @@ namespace vizkit3d
         int cubeSplitting;
         bool renderSplats;
         double splatScale;
-        // splat geometry is only rebuilt on new data, not on every property change
-        bool splatDataChanged;
 
         PCLPointCloudNode::DispatchConfig dispatchConfig;
     };

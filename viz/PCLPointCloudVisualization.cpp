@@ -30,8 +30,7 @@ PCLPointCloudVisualization::PCLPointCloudVisualization()
     autoLod(false),
     cubeSplitting(1),
     renderSplats(true),
-    splatScale(1.0),
-    splatDataChanged(false)
+    splatScale(1.0)
 {
 }
 
@@ -45,11 +44,8 @@ osg::ref_ptr<osg::Node> PCLPointCloudVisualization::createMainNode()
     osg::ref_ptr<osg::Group> mainNode = new osg::Group();
 
     cloudnode = new PCLPointCloudNode();
+    cloudnode->setSplatScale(splatScale);
     mainNode->addChild(cloudnode);
-
-    splatnode = new GaussianSplatNode();
-    splatnode->setSplatScale(splatScale);
-    mainNode->addChild(splatnode);
 
     setPointSize(DEFAULT_POINT_SIZE);
     return mainNode;
@@ -72,22 +68,12 @@ void PCLPointCloudVisualization::updateMainNode ( osg::Node* node )
     // add the default layer (not downsampled)
     cloudnode->addLodLevel(0, maxviz, 1);
 
-    
-    const bool hasPc2 = (p->pc2.width > 0 || p->pc2.height > 0) && p->pc2.data.size();
-    const bool showSplats = hasPc2 && renderSplats && GaussianSplatNode::isSplatCloud(p->pc2);
-    if (showSplats) {
-        if (splatDataChanged || !splatnode->getNumSplats()) {
-            splatnode->setData(p->pc2);
-        }
-    } else {
-        splatnode->clear();
-    }
-    splatDataChanged = false;
 
-    // dispatch PCLPointCloud2 to osg format
-    if (showSplats) {
-        // displayed by splatnode
-    } else if (hasPc2) {
+    const bool hasPc2 = (p->pc2.width > 0 || p->pc2.height > 0) && p->pc2.data.size();
+    dispatchConfig.renderSplats = renderSplats;
+
+    // dispatch PCLPointCloud2 to osg format (clouds with gaussian splat fields are rendered as splats)
+    if (hasPc2) {
         cloudnode->dispatch(p->pc2, dispatchConfig, show_color, show_intensity, getCamera());
     } else if (p->pcxyz.size()) {
         cloudnode->dispatch(p->pcxyz, dispatchConfig, getCamera());
@@ -102,7 +88,6 @@ void PCLPointCloudVisualization::updateDataIntern(const pcl::PCLPointCloud2 &dat
         updateManualVizPose();
     }
     p->pc2 = data;
-    splatDataChanged = true;
 }
 
 void PCLPointCloudVisualization::updateDataIntern(const pcl::PointCloud<pcl::PointXYZ> &data)
@@ -295,8 +280,8 @@ void PCLPointCloudVisualization::setSplatScale(double value)
         value = 0.01;
     }
     splatScale = value;
-    if (splatnode) {
-        splatnode->setSplatScale(value);
+    if (cloudnode) {
+        cloudnode->setSplatScale(value);
     }
     emit propertyChanged("splatScale");
 }

@@ -1,11 +1,17 @@
 #include "PCLPointCloudNode.hpp"
 
+#include <algorithm>
+#include <cfloat>
+#include <chrono>
+#include <cmath>
 
 #include <vizkit3d/ColorConversionHelper.hpp>
 #include <pcl/common/common.h>
 #include <pcl/common/io.h>
+#include <pcl/conversions.h>
 
 #include <osg/Uniform>
+#include <osgUtil/CullVisitor>
 
 
 // https://forum.playcanvas.com/t/world-coordinate-in-fragment-shader/22996/8
@@ -109,9 +115,26 @@ struct ModelMatrixCallback: public osg::Uniform::Callback
 
 };
 
+/**
+ * forwards the current model view matrix and viewport to the node on cull,
+ * used to keep the gaussian splats sorted back to front
+ */
+struct SplatCullCallback: public osg::NodeCallback
+{
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        if (cv && cv->getModelViewMatrix() && cv->getViewport()) {
+            const osg::Viewport* vp = cv->getViewport();
+            static_cast<PCLPointCloudNode*>(node)->updateView(*cv->getModelViewMatrix(), vp->width(), vp->height());
+        }
+        traverse(node, nv);
+    }
+};
 
 
-PCLPointCloudNode::PCLPointCloudNode():subCloudsX(1),subCloudsY(1),subCloudsZ(1),pointsize(1) {
+
+PCLPointCloudNode::PCLPointCloudNode():subCloudsX(1),subCloudsY(1),subCloudsZ(1),pointsize(1),
+                                       splatScale(1.0f),splatGeneration(0),sortGeneration(0),splatsSorted(false) {
     subClouds = std::make_shared<SubClouds>(subCloudsX,subCloudsY,subCloudsZ);
     addChild(subClouds->osgGroup);
 
@@ -122,6 +145,19 @@ PCLPointCloudNode::PCLPointCloudNode():subCloudsX(1),subCloudsY(1),subCloudsZ(1)
     program->addShader(fShader);
     cycleColorIntervalUniform = new osg::Uniform(osg::Uniform::FLOAT, "cycleColorInterval");
     cycleColorIntervalUniform->set((float)5);
+
+    // uniforms for the gaussian splat shaders, on the node itself so they survive clear()
+    viewportUniform = new osg::Uniform("u_viewport", osg::Vec2f(1, 1));
+    splatScaleUniform = new osg::Uniform("u_scale", splatScale);
+    getOrCreateStateSet()->addUniform(viewportUniform);
+    getOrCreateStateSet()->addUniform(splatScaleUniform);
+    setCullCallback(new SplatCullCallback);
+}
+
+PCLPointCloudNode::~PCLPointCloudNode() {
+    if (sortResult.valid()) {
+        sortResult.wait();
+    }
 }
 
 void PCLPointCloudNode::addLodLevel(const float& from, const float& to, const float& downsample) {
@@ -169,7 +205,11 @@ void PCLPointCloudNode::enbableHeightColorShader(osg::Node* parent, osg::Camera*
 }
 
 void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const DispatchConfig& config, bool show_color, bool show_intensity, osg::Camera* cam) {
-    if(pcl::getFieldIndex(pcl_cloud, "rgba") != -1 && (show_color || show_intensity))
+    if(config.renderSplats && GaussianSplats::isSplatCloud(pcl_cloud))
+    {
+        dispatchSplats(pcl_cloud, config);
+    }
+    else if(pcl::getFieldIndex(pcl_cloud, "rgba") != -1 && (show_color || show_intensity))
     {
         pcl::PointCloud<pcl::PointXYZRGBA> pc;
         pcl::fromPCLPointCloud2(pcl_cloud, pc);
@@ -202,7 +242,7 @@ void PCLPointCloudNode::dispatch(const pcl::PCLPointCloud2& pcl_cloud, const Dis
 }
 
 void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pc, const DispatchConfig& config, bool show_color, bool show_intensity) {
-    traversePoints<pcl::PointXYZRGBA>(pc, config, [&](const pcl::PointXYZRGBA& point, LodLevel &lodlevel){
+    traversePoints<pcl::PointXYZRGBA>(pc, config, [&](const pcl::PointXYZRGBA& point, const size_t& index, LodLevel &lodlevel){
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         if(!show_color)
             lodlevel.getColors()->push_back(osg::Vec4f(config.default_feature_color.x(), config.default_feature_color.y(), config.default_feature_color.z(), point.a/255.0));
@@ -215,14 +255,14 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGBA>& pc, c
 
 
 void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZRGB>& pc, const DispatchConfig& config) {
-    traversePoints<pcl::PointXYZRGB>(pc, config, [&](const pcl::PointXYZRGB& point, LodLevel &lodlevel){
+    traversePoints<pcl::PointXYZRGB>(pc, config, [&](const pcl::PointXYZRGB& point, const size_t& index, LodLevel &lodlevel){
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         lodlevel.getColors()->push_back(osg::Vec4f(point.r/255.0, point.g/255.0, point.b/255.0, 1.0));
     });
 }
 
-void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, const DispatchConfig& config) {        
-    traversePoints<pcl::PointXYZI>(pc, config, [&](const pcl::PointXYZI& point, LodLevel &lodlevel){
+void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, const DispatchConfig& config) {
+    traversePoints<pcl::PointXYZI>(pc, config, [&](const pcl::PointXYZI& point, const size_t& index, LodLevel &lodlevel){
         osg::Vec4f feature_color = config.default_feature_color;
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         feature_color.w() = point.intensity;
@@ -234,7 +274,7 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZI>& pc, cons
  * this may be used directly, so we need to take care of useHeightColoring
  */
 void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const DispatchConfig& config, osg::Camera* cam) {
-    std::pair<pcl::PointXYZ, pcl::PointXYZ> minmax = traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, LodLevel &lodlevel){
+    std::pair<pcl::PointXYZ, pcl::PointXYZ> minmax = traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, const size_t& index, LodLevel &lodlevel){
         lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
         lodlevel.getColors()->push_back(config.default_feature_color);
     },false,false,true);
@@ -250,3 +290,144 @@ void PCLPointCloudNode::dispatch(const pcl::PointCloud<pcl::PointXYZ>& pc, const
 //         lodlevel.getColors()->push_back(default_feature_color);
 //     });
 // }
+
+void PCLPointCloudNode::dispatchSplats(const pcl::PCLPointCloud2& pcl_cloud, const DispatchConfig& config) {
+    GaussianSplats::FieldOffsets fields;
+    if (!GaussianSplats::getFieldOffsets(pcl_cloud, fields) || !pcl_cloud.width) {
+        return;
+    }
+
+    // positions for the sub cube/LOD distribution, the splat fields are read from the raw cloud by index
+    pcl::PointCloud<pcl::PointXYZ> pc;
+    pcl::fromPCLPointCloud2(pcl_cloud, pc);
+
+    traversePoints<pcl::PointXYZ>(pc, config, [&](const pcl::PointXYZ& point, const size_t& index, LodLevel &lodlevel){
+        const uint8_t* pointData = pcl_cloud.data.data()
+                                   + (index / pcl_cloud.width) * pcl_cloud.row_step
+                                   + (index % pcl_cloud.width) * pcl_cloud.point_step;
+        const GaussianSplats::Splat splat = GaussianSplats::extract(pointData, fields);
+        if (!splat.valid) {
+            return;
+        }
+        lodlevel.getPoints()->push_back(osg::Vec3f(point.x, point.y, point.z));
+        lodlevel.getSplatCovA()->push_back(splat.covA);
+        lodlevel.getSplatCovB()->push_back(splat.covB);
+        lodlevel.getSplatColors()->push_back(splat.color);
+        // conservative splat extent: 2 sigma of the largest eigenvalue <= 2 sqrt(trace)
+        const float trace = splat.covA.x() + splat.covB.x() + splat.covB.z();
+        lodlevel.maxSplatRadius = std::max(lodlevel.maxSplatRadius, 2.0f * std::sqrt(std::max(0.0f, trace)));
+    }, false, false, false, true);
+}
+
+void PCLPointCloudNode::applySplatBounds() {
+    for (SplatChunk& chunk : splatChunks) {
+        if (!chunk.bound.valid()) {
+            continue;
+        }
+        const float radius = chunk.maxRadius * std::max(1.0f, splatScale);
+        const osg::Vec3f padding(radius, radius, radius);
+        chunk.geometry->setInitialBound(osg::BoundingBox(chunk.bound._min - padding, chunk.bound._max + padding));
+        chunk.geometry->dirtyBound();
+    }
+}
+
+void PCLPointCloudNode::setSplatScale(const float& scale) {
+    splatScale = scale;
+    splatScaleUniform->set(scale);
+    // larger splats reach further out of their cube bounds
+    applySplatBounds();
+}
+
+float PCLPointCloudNode::getSplatScale() const {
+    return splatScale;
+}
+
+void PCLPointCloudNode::updateView(const osg::Matrix& modelview, float viewportWidth, float viewportHeight) {
+    viewportUniform->set(osg::Vec2f(viewportWidth, viewportHeight));
+    if (splatChunks.empty()) {
+        return;
+    }
+
+    if (splatChunks.size() > 1) {
+        // Draw the cube geometries strictly back to front by assigning render bin numbers.
+        // For disjoint grid cells this order is exact: per axis, cells farther from the eye
+        // cell never occlude nearer ones on the same side, and cells on opposite sides of the
+        // eye never share a view ray. Only splats whose footprint crosses a cube face can
+        // still blend in the wrong order.
+        const osg::Vec3f eye = osg::Matrix::inverse(modelview).getTrans();
+        const osg::Vec3f eyeCell((eye.x() - splatGridMin.x()) * splatGridScale.x(),
+                                 (eye.y() - splatGridMin.y()) * splatGridScale.y(),
+                                 (eye.z() - splatGridMin.z()) * splatGridScale.z());
+        std::vector<osg::Vec3f> farness(splatChunks.size());
+        std::vector<size_t> order(splatChunks.size());
+        for (size_t i = 0; i < splatChunks.size(); ++i) {
+            const osg::Vec3f d = splatChunks[i].cube + osg::Vec3f(0.5f, 0.5f, 0.5f) - eyeCell;
+            farness[i].set(std::fabs(d.x()), std::fabs(d.y()), std::fabs(d.z()));
+            order[i] = i;
+        }
+        std::sort(order.begin(), order.end(), [&farness](const size_t& a, const size_t& b) {
+            if (farness[a].x() != farness[b].x()) return farness[a].x() > farness[b].x();
+            if (farness[a].y() != farness[b].y()) return farness[a].y() > farness[b].y();
+            return farness[a].z() > farness[b].z();
+        });
+        for (size_t rank = 0; rank < order.size(); ++rank) {
+            // bins above the opaque (0) and standard transparent (10) bins, drawn in rank order
+            splatChunks[order[rank]].geometry->getOrCreateStateSet()->setRenderBinDetails(
+                20 + static_cast<int>(rank), "RenderBin");
+        }
+    }
+
+    // osg matrices are row major (v' = v * M), the third column maps a point to its view space z
+    osg::Vec3f viewdir(modelview(0, 2), modelview(1, 2), modelview(2, 2));
+    viewdir.normalize();
+
+    if (sortResult.valid() && sortResult.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        std::vector<std::vector<GLuint>> orders = sortResult.get();
+        sortResult = std::future<std::vector<std::vector<GLuint>>>();
+        if (sortGeneration == splatGeneration) {
+            applySortResults(std::move(orders));
+            sortedViewDir = requestedViewDir;
+        }
+    }
+
+    if (!splatsSorted) {
+        // first draw of this cloud: sort synchronously to avoid showing unsorted splats
+        sortedViewDir = viewdir;
+        std::vector<std::vector<GLuint>> orders;
+        orders.reserve(splatChunks.size());
+        for (SplatChunk& chunk : splatChunks) {
+            orders.push_back(GaussianSplats::sortBackToFront(*chunk.centers, viewdir));
+        }
+        applySortResults(std::move(orders));
+    } else if (!sortResult.valid() && viewdir * sortedViewDir < 0.99999f) {
+        requestedViewDir = viewdir;
+        sortGeneration = splatGeneration;
+        std::vector<osg::ref_ptr<const osg::Vec3Array>> centers;
+        centers.reserve(splatChunks.size());
+        for (SplatChunk& chunk : splatChunks) {
+            centers.push_back(chunk.centers);
+        }
+        sortResult = std::async(std::launch::async, [centers, viewdir]() {
+            std::vector<std::vector<GLuint>> orders;
+            orders.reserve(centers.size());
+            for (const osg::ref_ptr<const osg::Vec3Array>& chunkCenters : centers) {
+                orders.push_back(GaussianSplats::sortBackToFront(*chunkCenters, viewdir));
+            }
+            return orders;
+        });
+    }
+}
+
+void PCLPointCloudNode::applySortResults(std::vector<std::vector<GLuint>>&& orders) {
+    splatsSorted = true;
+    if (orders.size() != splatChunks.size()) {
+        return;
+    }
+    for (size_t i = 0; i < orders.size(); ++i) {
+        if (orders[i].size() != splatChunks[i].indices->size()) {
+            continue;
+        }
+        splatChunks[i].indices->asVector().swap(orders[i]);
+        splatChunks[i].indices->dirty();
+    }
+}

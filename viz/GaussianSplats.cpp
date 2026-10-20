@@ -1,7 +1,6 @@
-#include "GaussianSplatNode.hpp"
+#include "GaussianSplats.hpp"
 
 #include <cfloat>
-#include <chrono>
 #include <cmath>
 #include <cstring>
 
@@ -11,7 +10,7 @@
 #include <osg/Depth>
 #include <osg/Program>
 #include <osg/Shader>
-#include <osgUtil/CullVisitor>
+#include <osg/StateSet>
 
 // Splat rendering after "3D Gaussian Splatting for Real-Time Radiance Field Rendering" (Kerbl et al. 2023):
 // the 3D covariance of each splat is projected to a 2D screen space covariance (EWA splatting),
@@ -122,18 +121,6 @@ const char *splatFragmentShader = "#version 330 compatibility\n"
     "    gl_FragColor = vec4(g_color.rgb, alpha);\n"
     "}\n";
 
-class SplatCullCallback : public osg::NodeCallback {
- public:
-    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
-        if (cv && cv->getModelViewMatrix() && cv->getViewport()) {
-            const osg::Viewport* vp = cv->getViewport();
-            static_cast<GaussianSplatNode*>(node)->updateView(*cv->getModelViewMatrix(), vp->width(), vp->height());
-        }
-        traverse(node, nv);
-    }
-};
-
 int fieldOffset(const pcl::PCLPointCloud2& cloud, const std::string& name) {
     for (const pcl::PCLPointField& field : cloud.fields) {
         if (field.name == name && field.datatype == pcl::PCLPointField::FLOAT32) {
@@ -150,128 +137,87 @@ const char* const splatFields[] = {"x", "y", "z",
                                    "f_dc_0", "f_dc_1", "f_dc_2"};
 const size_t numSplatFields = sizeof(splatFields) / sizeof(splatFields[0]);
 
+osg::ref_ptr<osg::Program> splatProgram() {
+    // one program shared by all splat geometries
+    static osg::ref_ptr<osg::Program> program;
+    if (!program.valid()) {
+        program = new osg::Program;
+        program->addShader(new osg::Shader(osg::Shader::VERTEX, splatVertexShader));
+        program->addShader(new osg::Shader(osg::Shader::GEOMETRY, splatGeometryShader));
+        program->addShader(new osg::Shader(osg::Shader::FRAGMENT, splatFragmentShader));
+        program->addBindAttribLocation("a_covA", COV_A_ATTRIB);
+        program->addBindAttribLocation("a_covB", COV_B_ATTRIB);
+        program->addBindAttribLocation("a_color", COLOR_ATTRIB);
+    }
+    return program;
+}
+
 }  // namespace
 
-GaussianSplatNode::GaussianSplatNode()
-    : geode(new osg::Geode),
-      viewportUniform(new osg::Uniform("u_viewport", osg::Vec2f(1, 1))),
-      scaleUniform(new osg::Uniform("u_scale", 1.0f)),
-      sorted(false),
-      splatScale(1.0f) {
+namespace GaussianSplats {
 
-    osg::ref_ptr<osg::Program> program = new osg::Program;
-    program->addShader(new osg::Shader(osg::Shader::VERTEX, splatVertexShader));
-    program->addShader(new osg::Shader(osg::Shader::GEOMETRY, splatGeometryShader));
-    program->addShader(new osg::Shader(osg::Shader::FRAGMENT, splatFragmentShader));
-    program->addBindAttribLocation("a_covA", COV_A_ATTRIB);
-    program->addBindAttribLocation("a_covB", COV_B_ATTRIB);
-    program->addBindAttribLocation("a_color", COLOR_ATTRIB);
-
-    osg::StateSet* stateset = geode->getOrCreateStateSet();
-    stateset->setAttributeAndModes(program, osg::StateAttribute::ON);
-    stateset->addUniform(viewportUniform);
-    stateset->addUniform(scaleUniform);
-    stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    stateset->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-    stateset->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON);
-    // test against the scene, but don't write depth (splats are blended in sorted order)
-    stateset->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0.0, 1.0, false), osg::StateAttribute::ON);
-    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-
-    addChild(geode);
-    setCullCallback(new SplatCullCallback);
-}
-
-GaussianSplatNode::~GaussianSplatNode() {
-    if (sortResult.valid()) {
-        sortResult.wait();
-    }
-}
-
-bool GaussianSplatNode::isSplatCloud(const pcl::PCLPointCloud2& cloud) {
+bool getFieldOffsets(const pcl::PCLPointCloud2& cloud, FieldOffsets& fields) {
     for (size_t i = 0; i < numSplatFields; ++i) {
-        if (fieldOffset(cloud, splatFields[i]) < 0) {
+        fields.offsets[i] = fieldOffset(cloud, splatFields[i]);
+        if (fields.offsets[i] < 0) {
             return false;
         }
     }
     return true;
 }
 
-void GaussianSplatNode::clear() {
-    if (sortResult.valid()) {
-        sortResult.wait();
-        sortResult = std::future<std::vector<GLuint>>();
-    }
-    geode->removeDrawables(0, geode->getNumDrawables());
-    geometry = nullptr;
-    indices = nullptr;
-    centers = nullptr;
-    sorted = false;
+bool isSplatCloud(const pcl::PCLPointCloud2& cloud) {
+    FieldOffsets fields;
+    return getFieldOffsets(cloud, fields);
 }
 
-void GaussianSplatNode::setData(const pcl::PCLPointCloud2& cloud) {
-    clear();
-    if (!isSplatCloud(cloud)) {
-        return;
-    }
-
-    int offsets[numSplatFields];
-    for (size_t i = 0; i < numSplatFields; ++i) {
-        offsets[i] = fieldOffset(cloud, splatFields[i]);
-    }
-
-    const size_t count = static_cast<size_t>(cloud.width) * cloud.height;
-    osg::ref_ptr<osg::Vec3Array> positions = new osg::Vec3Array;
-    osg::ref_ptr<osg::Vec3Array> covA = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    osg::ref_ptr<osg::Vec3Array> covB = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    osg::ref_ptr<osg::Vec4ubArray> colors = new osg::Vec4ubArray(osg::Array::BIND_PER_VERTEX);
-    colors->setNormalize(true);
-    positions->reserve(count);
-    covA->reserve(count);
-    covB->reserve(count);
-    colors->reserve(count);
-
+Splat extract(const uint8_t* pointData, const FieldOffsets& fields) {
+    Splat splat;
     float values[numSplatFields];
-    for (size_t row = 0; row < cloud.height; ++row) {
-        for (size_t col = 0; col < cloud.width; ++col) {
-            const uint8_t* point = cloud.data.data() + row * cloud.row_step + col * cloud.point_step;
-            for (size_t i = 0; i < numSplatFields; ++i) {
-                memcpy(&values[i], point + offsets[i], sizeof(float));
-            }
-            const float opacity = 1.0f / (1.0f + std::exp(-values[10]));
-            if (opacity < 1.0f / 255.0f || !std::isfinite(values[0]) || !std::isfinite(values[1]) || !std::isfinite(values[2])) {
-                continue;
-            }
-
-            // covariance = R S S^T R^T
-            Eigen::Quaternionf rotation(values[6], values[7], values[8], values[9]);
-            if (rotation.squaredNorm() < 1e-12f) {
-                rotation.setIdentity();
-            }
-            const Eigen::Vector3f scale(std::exp(values[3]), std::exp(values[4]), std::exp(values[5]));
-            const Eigen::Matrix3f m = rotation.normalized().toRotationMatrix() * scale.asDiagonal();
-            const Eigen::Matrix3f cov = m * m.transpose();
-
-            auto toByte = [](float shCoeff) {
-                const float c = 0.5f + SH_C0 * shCoeff;
-                return static_cast<uint8_t>(std::round(std::min(1.0f, std::max(0.0f, c)) * 255.0f));
-            };
-
-            positions->push_back(osg::Vec3f(values[0], values[1], values[2]));
-            covA->push_back(osg::Vec3f(cov(0, 0), cov(0, 1), cov(0, 2)));
-            covB->push_back(osg::Vec3f(cov(1, 1), cov(1, 2), cov(2, 2)));
-            colors->push_back(osg::Vec4ub(toByte(values[11]), toByte(values[12]), toByte(values[13]),
-                                          static_cast<uint8_t>(std::round(opacity * 255.0f))));
-        }
+    for (size_t i = 0; i < numSplatFields; ++i) {
+        memcpy(&values[i], pointData + fields.offsets[i], sizeof(float));
     }
 
-    indices = new osg::DrawElementsUInt(osg::PrimitiveSet::POINTS, positions->size());
-    for (GLuint i = 0; i < positions->size(); ++i) {
-        (*indices)[i] = i;
+    const float opacity = 1.0f / (1.0f + std::exp(-values[10]));
+    splat.valid = opacity >= 1.0f / 255.0f &&
+                  std::isfinite(values[0]) && std::isfinite(values[1]) && std::isfinite(values[2]);
+    if (!splat.valid) {
+        return splat;
     }
+
+    // covariance = R S S^T R^T
+    Eigen::Quaternionf rotation(values[6], values[7], values[8], values[9]);
+    if (rotation.squaredNorm() < 1e-12f) {
+        rotation.setIdentity();
+    }
+    const Eigen::Vector3f scale(std::exp(values[3]), std::exp(values[4]), std::exp(values[5]));
+    const Eigen::Matrix3f m = rotation.normalized().toRotationMatrix() * scale.asDiagonal();
+    const Eigen::Matrix3f cov = m * m.transpose();
+
+    auto toByte = [](float shCoeff) {
+        const float c = 0.5f + SH_C0 * shCoeff;
+        return static_cast<uint8_t>(std::round(std::min(1.0f, std::max(0.0f, c)) * 255.0f));
+    };
+
+    splat.covA = osg::Vec3f(cov(0, 0), cov(0, 1), cov(0, 2));
+    splat.covB = osg::Vec3f(cov(1, 1), cov(1, 2), cov(2, 2));
+    splat.color = osg::Vec4ub(toByte(values[11]), toByte(values[12]), toByte(values[13]),
+                              static_cast<uint8_t>(std::round(opacity * 255.0f)));
+    return splat;
+}
+
+osg::ref_ptr<osg::Geometry> createGeometry(osg::Vec3Array* positions,
+                                           osg::Vec3Array* covA,
+                                           osg::Vec3Array* covB,
+                                           osg::Vec4ubArray* colors,
+                                           osg::DrawElementsUInt* indices) {
+    covA->setBinding(osg::Array::BIND_PER_VERTEX);
+    covB->setBinding(osg::Array::BIND_PER_VERTEX);
+    colors->setBinding(osg::Array::BIND_PER_VERTEX);
+    colors->setNormalize(true);
     indices->setDataVariance(osg::Object::DYNAMIC);
 
-    geometry = new osg::Geometry;
+    osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
     geometry->setDataVariance(osg::Object::DYNAMIC);
     geometry->setUseDisplayList(false);
     geometry->setUseVertexBufferObjects(true);
@@ -280,45 +226,22 @@ void GaussianSplatNode::setData(const pcl::PCLPointCloud2& cloud) {
     geometry->setVertexAttribArray(COV_B_ATTRIB, covB);
     geometry->setVertexAttribArray(COLOR_ATTRIB, colors);
     geometry->addPrimitiveSet(indices);
-    geode->addDrawable(geometry);
 
-    centers = positions;
+    osg::StateSet* stateset = geometry->getOrCreateStateSet();
+    // the render bin number is updated on cull to draw the cubes back to front
+    stateset->setDataVariance(osg::Object::DYNAMIC);
+    stateset->setAttributeAndModes(splatProgram(), osg::StateAttribute::ON);
+    stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    stateset->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
+    stateset->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON);
+    // test against the scene, but don't write depth (splats are blended in sorted order)
+    stateset->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0.0, 1.0, false), osg::StateAttribute::ON);
+    // the transparent bin also depth sorts the splat geometries against each other
+    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    return geometry;
 }
 
-void GaussianSplatNode::setSplatScale(float scale) {
-    splatScale = scale;
-    scaleUniform->set(scale);
-}
-
-void GaussianSplatNode::updateView(const osg::Matrix& modelview, float viewportWidth, float viewportHeight) {
-    viewportUniform->set(osg::Vec2f(viewportWidth, viewportHeight));
-    if (!centers.valid() || centers->empty()) {
-        return;
-    }
-
-    // osg matrices are row major (v' = v * M), the third column maps a point to its view space z
-    osg::Vec3f viewdir(modelview(0, 2), modelview(1, 2), modelview(2, 2));
-    viewdir.normalize();
-
-    if (sortResult.valid() && sortResult.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-        applySortResult(sortResult.get());
-        sortedViewDir = requestedViewDir;
-    }
-
-    if (!sorted) {
-        // first draw: sort synchronously to avoid showing an unsorted cloud
-        sortedViewDir = viewdir;
-        applySortResult(sortBackToFront(*centers, viewdir));
-    } else if (!sortResult.valid() && viewdir * sortedViewDir < 0.99999f) {
-        requestedViewDir = viewdir;
-        osg::ref_ptr<const osg::Vec3Array> sortCenters = centers;
-        sortResult = std::async(std::launch::async, [sortCenters, viewdir]() {
-            return sortBackToFront(*sortCenters, viewdir);
-        });
-    }
-}
-
-std::vector<GLuint> GaussianSplatNode::sortBackToFront(const osg::Vec3Array& centers, const osg::Vec3f& viewdir) {
+std::vector<GLuint> sortBackToFront(const osg::Vec3Array& centers, const osg::Vec3f& viewdir) {
     // 16 bit counting sort on view space z (ascending, so farthest first)
     const size_t count = centers.size();
     std::vector<float> depth(count);
@@ -349,11 +272,4 @@ std::vector<GLuint> GaussianSplatNode::sortBackToFront(const osg::Vec3Array& cen
     return order;
 }
 
-void GaussianSplatNode::applySortResult(std::vector<GLuint>&& order) {
-    sorted = true;
-    if (!indices.valid() || order.size() != indices->size()) {
-        return;
-    }
-    indices->asVector().swap(order);
-    indices->dirty();
-}
+}  // namespace GaussianSplats
